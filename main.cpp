@@ -4,7 +4,6 @@
 #include <raylib.h>
 
 #include "dtypes.hpp"
-#include "qtree.hpp"
 #include "otree.hpp"
 #include <optional>
 #include <utility>
@@ -18,11 +17,6 @@ int main(){
     // QuadTree qtree(6);
     OctTree otree(7);
 
-    // for(int i = 3; i <= 5; i++){
-    //     otree_insert_node(otree, RED, Vec3(i+20,24,24), 0);
-    //     otree_insert_node(otree, GREEN, Vec3(24,20+i,24), 0);
-    //     otree_insert_node(otree, BLUE, Vec3(24,24,20+i), 0);
-    // }
 
     Color clrs[7] = {RED,GREEN,BLUE,PINK,YELLOW,PURPLE,WHITE};
     int stepsz = -4;
@@ -33,11 +27,34 @@ int main(){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 6);
+        otree_insert_node(otree, clrs[rind], cpos + Vec3(-15,0,0), stepsz);
+
+    }
+    }
+    }
+    for(double ix = 18; ix <= 25; ix+=step){
+    for(double iy = 18; iy <= 32; iy+=step){
+    for(double iz = 18; iz <= 32; iz+=step){
+        Vec3 cpos = Vec3(ix,iy,iz);
+        if (cpos.dist(Vec3(25,25,25))>5)continue;
+        int rind = GetRandomValue(0, 6);
         otree_insert_node(otree, clrs[rind], cpos, stepsz);
         
     }
     }
     }
+    for(double ix = 25; ix <= 32; ix+=1){
+    for(double iy = 18; iy <= 32; iy+=1){
+    for(double iz = 18; iz <= 32; iz+=1){
+        Vec3 cpos = Vec3(ix,iy,iz);
+        if (cpos.dist(Vec3(25,25,25))>5)continue;
+        int rind = GetRandomValue(0, 6);
+        otree_insert_node(otree, clrs[rind], cpos, 0);
+        
+    }
+    }
+    }
+
     for(double ix = 8; ix <= 22; ix+=1){
     for(double iy = 8; iy <= 22; iy+=1){
     for(double iz = 8; iz <= 22; iz+=1){
@@ -80,7 +97,7 @@ int main(){
 
 
 
-        angle_h += (IsKeyDown(KEY_LEFT) - IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
+        angle_h += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         angle_v += (-IsKeyDown(KEY_UP) + IsKeyDown(KEY_DOWN)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
 
         for (int angv = -30; angv <= 30; angv++){
@@ -113,7 +130,7 @@ int main(){
             }
         }
 
-        double rot_h[9] = {std::cos(angle_h),0,-std::sin(angle_h),0,1,0,std::sin(angle_h),0,std::cos(angle_h)}; 
+        double rot_h[9] = {std::cos(angle_h),0,std::sin(angle_h),0,1,0,-std::sin(angle_h),0,std::cos(angle_h)}; 
         Mat3 rot = Mat3(rot_h);
         Vec3 movedir = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),IsKeyDown(KEY_LEFT_SHIFT)-IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED;
         movedir = rot * movedir;
