@@ -2,18 +2,20 @@
 #include "otree.hpp"
 #include <cmath>
 #include <memory>
+#include <optional>
+#include <raylib.h>
 #include <stack>
 #include <tuple>
 
-OctTreeNode::OctTreeNode(bool filled, i32 size){this->filled = filled;this->size = size;}
+OctTreeNode::OctTreeNode(std::optional<Color> fill, i32 size){this->fill = fill;this->size = size;}
 OctTree::OctTree(i32 size){
-    std::unique_ptr<OctTreeNode> root(new OctTreeNode(false,size));
+    std::unique_ptr<OctTreeNode> root(new OctTreeNode({},size));
     this->root.swap(root);
 }
 
-const double __QT_RAY_e = 0.00001;
+const double __QT_RAY_e = 0.000001;
 
-std::optional<Vec3> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir){
+std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir){
     Vec3 cpos = Vec3(0,0,0);
 
     std::stack<std::tuple<OTNcpointer,Vec3>> qu;
@@ -26,7 +28,11 @@ std::optional<Vec3> otree_sendray(const OctTree& tree, const Vec3& orgin, const 
 
         if (qu.empty()) break;
         auto [c_node,map_pos] = qu.top();
-        if (c_node->get()->filled) return ray_pos;
+        if (c_node->get()->fill.has_value()){ 
+            Color clr = c_node->get()->fill.value();
+            std::tuple<Vec3,Color> rt = {ray_pos,clr}; 
+            return rt;
+        }
         double psize = std::pow(2,c_node->get()->size);
 
         if(
@@ -83,7 +89,7 @@ bool otree_is_pos_filled(const OctTree& tree, const Vec3& position){
     while(true){
         psize = std::pow(2,c_node->get()->size);
         if (
-                c_node->get()->filled
+                c_node->get()->fill.has_value()
            ){
             return true;
         }
@@ -100,7 +106,7 @@ bool otree_is_pos_filled(const OctTree& tree, const Vec3& position){
     }
     return false;
 }
-void otree_insert_node(OctTree& tree, const Vec3& position, const i32& size){
+void otree_insert_node(OctTree& tree,const Color& fill, const Vec3& position, const i32& size){
     Vec3 c_pos = Vec3(0,0,0); 
     OTNcpointer c_node = &tree.root;
     double psize = std::pow(2,c_node->get()->size);
@@ -110,7 +116,7 @@ void otree_insert_node(OctTree& tree, const Vec3& position, const i32& size){
         if (
                 c_node->get()->size <= size
            ){
-            c_node->get()->filled=true;
+            c_node->get()->fill=fill;
             break;
         }
         bool ptx = !(position.x < c_pos.x + (psize / 2));
@@ -119,7 +125,7 @@ void otree_insert_node(OctTree& tree, const Vec3& position, const i32& size){
         u32 id = ptx + pty*2 + ptz*4;
         c_pos += Vec3(ptx,pty,ptz) * (psize/2);
         if (!c_node->get()->children[id].has_value()){
-            c_node->get()->children[id].emplace(new OctTreeNode(false,c_node->get()->size-1));
+            c_node->get()->children[id].emplace(new OctTreeNode({},c_node->get()->size-1));
         }
         c_node = &c_node->get()->children[id].value();
         continue;

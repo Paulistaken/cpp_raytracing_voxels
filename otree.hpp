@@ -1,3 +1,4 @@
+#include <raylib.h>
 #ifndef OTREEHEADER
 
 #include <memory>
@@ -8,20 +9,20 @@
 
 class OctTreeNode{
     public:
-    bool filled;
+    std::optional<Color> fill;
     Vec2 pos;
     i32 size;
     std::optional<std::unique_ptr<OctTreeNode>> children[8];
-    OctTreeNode(bool filled, i32 size);
+    OctTreeNode(std::optional<Color> fill, i32 size);
 };
 class OctTree{
     public:
     std::unique_ptr<OctTreeNode> root;
     OctTree(i32 size);
 };
-void otree_insert_node(OctTree& tree, const Vec3& position, const i32& size);
+void otree_insert_node(OctTree& tree, const Color& fill, const Vec3& position, const i32& size);
 bool otree_is_pos_filled(const OctTree& tree, const Vec3& position);
-std::optional<Vec3> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir);
+std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir);
 
 typedef const std::unique_ptr<OctTreeNode>* OTNcpointer;
 
