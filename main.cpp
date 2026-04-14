@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cmath>
+#include <iostream>
 #include <raylib.h>
 
 #include "dtypes.hpp"
@@ -15,104 +16,131 @@ const double MOVESPEED = 0.5;
 const double ROTSPEED = 0.1;
 
 void create_otree(OctTree& otree);
+void render_camera_view(const OctTree& otree, const Transform3& cam);
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam);
 
 int main(){
 
     //128x128x128
     OctTree otree(7);
+    OctTree otree_preview(7);
 
     create_otree(otree);
 
     InitWindow(600, 600, "ray");
     SetTargetFPS(60);
 
-    Vec3 orgin = {35,25,60};
+    Transform3 cam = Transform3({35,25,60},{0.,PI,0.});
     Vec3 mov_velocity = {0,0,0};
-    double angle_h = PI;
-    double angle_v = 0;
     
     bool show_map = false;
+    bool show_preview = true;
 
     while(!WindowShouldClose()){
         ClearBackground(Color{20,50,200,255});
 
         BeginDrawing();
 
-        angle_h += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
-        angle_v += (-IsKeyDown(KEY_UP) + IsKeyDown(KEY_DOWN)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
+        render_camera_view(otree,cam);
+        if (show_preview) render_camera_view(otree_preview,cam);
+        if (show_preview) insert_blocks(otree, otree_preview, cam);
 
-        const u32 vir_rez = VIR_REZ * SCREEN_HEIGTH /  SCREEN_WIDTH;
-        for (int angv = 0; angv <= vir_rez; angv++){
-            for(int angh = 0; angh <= VIR_REZ; angh++){
-                int anglh = angh - (VIR_REZ / 2);
-                int anglv = angv - (vir_rez / 2);
+        Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
+        Vec3 move_dir = from_euler_angles(Vec3(0,cam.euler_angle.y,0))*move_axis;
 
-                double cam_h = anglh / 180.0 * PI;
-                double cam_v = anglv / 180.0 * PI;
-
-                double rotcam_v[9] = {1,0,0,0,std::cos(cam_v),std::sin(cam_v),0,-std::sin(cam_v),std::cos(cam_v)}; 
-                double rotcam_h[9] = {std::cos(cam_h),0,-std::sin(cam_h),0,1,0,std::sin(cam_h),0,std::cos(cam_h)}; 
-
-                double rot_v[9] = {1,0,0,0,std::cos(angle_v),std::sin(angle_v),0,-std::sin(angle_v),std::cos(angle_v)}; 
-                double rot_h[9] = {std::cos(angle_h),0,-std::sin(angle_h),0,1,0,std::sin(angle_h),0,std::cos(angle_h)}; 
-                
-                Mat3 rotcam = Mat3(rotcam_v) * Mat3 (rotcam_h);
-                Vec3 cam_dir = rotcam * Vec3(0,0,1);
-
-                Mat3 rot = Mat3(rot_v) * Mat3(rot_h);
-                Vec3 dir = rot * cam_dir;
-
-                auto vl = otree_sendray(otree, orgin, dir);
-                if (vl.has_value()){
-                    auto [vpos, vcol] = vl.value();
-                    double dst = 1.0/std::max(vpos.dist(orgin)-10.0,1.0);
-                    unsigned char clr = dst * vcol.r;
-                    unsigned char clg = dst * vcol.g;
-                    unsigned char clb = dst * vcol.b;
-                    auto cl = Color{clr,clg,clb,255};
-                    int scx = SCREEN_WIDTH / VIR_REZ;
-                    int scy = SCREEN_HEIGTH / vir_rez;
-                    DrawRectangle((angh)*scx,(angv)*scy,scx,scy,cl);
-                }
-            }
-        }
-
-        double rot_h[9] = {std::cos(angle_h),0,std::sin(angle_h),0,1,0,-std::sin(angle_h),0,std::cos(angle_h)}; 
-        Mat3 rot = Mat3(rot_h);
-        Vec3 movedir = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
-        movedir=rot*movedir;
         mov_velocity = mov_velocity * 0.8;
-        if (movedir.dist(Vec3(0,0,0))>=0.00001){
-            mov_velocity = movedir;
-        }
-        orgin += mov_velocity;
 
-        show_map = IsKeyPressed(KEY_M) ? !show_map : show_map;
+        if (move_dir.dist(Vec3(0,0,0))>=0.00001){
+            mov_velocity = move_dir;
+        }
+        cam.pos += mov_velocity;
 
         if (show_map) {
-            Vec3 dir = rot*Vec3(0,0,1);
-            auto avl = otree_sendray(otree, orgin, dir);
+            auto avl = otree_sendray(otree, cam.pos, cam.get_forward());
             for(i32 x = 0; x < 60; x++){
                 for(i32 y = 0; y < 60; y++){
-                    if (!otree_is_pos_filled(otree, Vec3(x,orgin.y,y))) continue;
+                    if (!otree_is_pos_filled(otree, Vec3(x,cam.pos.y,y))) continue;
                     DrawRectangle(x*10, y*10, 10, 10, BLUE);
                 }
             }
-            DrawCircle(orgin.x * 10, orgin.z * 10, 5, RED);
+            DrawCircle(cam.pos.x * 10, cam.pos.z * 10, 5, RED);
             if (avl.has_value()){
                 auto [vl, vlc] = avl.value();
-                DrawLine(orgin.x * 10, orgin.z * 10, vl.x * 10, vl.z * 10, RED);
+                DrawLine(cam.pos.x * 10, cam.pos.z * 10, vl.x * 10, vl.z * 10, RED);
             }else{
-                DrawLine(orgin.x*10, orgin.z*10, orgin.x*10+dir.x*600, orgin.z*10+dir.z*600, GREEN);
+                DrawLine(cam.pos.x*10, cam.pos.z*10, cam.pos.x*10+cam.get_forward().x*600, cam.pos.z*10+cam.get_forward().z*600, GREEN);
             }
         }
 
-        DrawText(TextFormat("x: %f, y: %f, z: %f", orgin.x, orgin.y, orgin.z),0,0,16,YELLOW);
-        DrawText(TextFormat("yaw: %f, pitch: %f", angle_h, angle_v),0,16,16,YELLOW);
-        DrawFPS(0, 32);
+        DrawText(TextFormat("x: %f, y: %f, z: %f", cam.pos.x, cam.pos.y, cam.pos.z),0,0,16,YELLOW);
+        DrawText(TextFormat("yaw: %f, pitch: %f", cam.euler_angle.y, cam.euler_angle.x),0,16,16,YELLOW);
+        DrawFPS(0, 48);
 
         EndDrawing();
 
+        cam.euler_angle.y += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
+        cam.euler_angle.x += (-IsKeyDown(KEY_UP) + IsKeyDown(KEY_DOWN)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
+
+        show_map = IsKeyPressed(KEY_M) ? !show_map : show_map;
+        show_preview = IsKeyPressed(KEY_P) ? !show_preview : show_preview;
+
+    }
+}
+
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam) {
+    Vec3 cam_forward = cam.get_forward();
+    auto forward_ray = otree_sendray(otree, cam.pos, cam.get_forward());
+
+    if (forward_ray.has_value()){
+        auto [ray_pos,ray_v] = forward_ray.value();
+        Vec3 insert_pos = ray_pos - (cam_forward*0.5);
+        if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
+            otree_insert_node(otree, WHITE, insert_pos, 0);
+        }else{
+            otree_preview.clear();
+            otree_insert_node(otree_preview, Color{255,255,255,200}, insert_pos, 0);
+        }
+    }else {
+        Vec3 insert_pos = cam.pos + cam_forward * 5;
+        if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
+            otree_insert_node(otree, WHITE, insert_pos, 0);
+        }
+    }
+}
+
+void render_camera_view(const OctTree& otree, const Transform3& cam){
+    const u32 vir_rez = VIR_REZ * SCREEN_HEIGTH /  SCREEN_WIDTH;
+
+    double anglestep_v = 60.0 / vir_rez;
+    double anglestep_h = 60.0 / VIR_REZ;
+
+    for (int angv = 0; angv <= vir_rez; angv++){
+        for(int angh = 0; angh <= VIR_REZ; angh++){
+            
+            double anglh = angh * anglestep_h - 30.0;
+            double anglv = angv * anglestep_v - 30.0;
+
+            double cam_h = anglh / 180.0 * PI;
+            double cam_v = anglv / 180.0 * PI;
+
+            Mat3 rotcam = from_euler_angles(Vec3(cam_v,cam_h,0));
+            Mat3 rot = from_euler_angles(cam.euler_angle);
+            Vec3 cam_dir = rotcam * Vec3(0,0,1);
+            Vec3 dir = rot * cam_dir;
+
+            auto vl = otree_sendray(otree, cam.pos, dir);
+            if (vl.has_value()){
+                auto [vpos, vcol] = vl.value();
+                double dst = 1.0/std::max(vpos.dist(cam.pos)/5.0,1.0);
+                unsigned char clr = dst * vcol.r;
+                unsigned char clg = dst * vcol.g;
+                unsigned char clb = dst * vcol.b;
+                auto cl = Color{clr,clg,clb,vcol.a};
+                int scx = SCREEN_WIDTH / VIR_REZ;
+                int scy = SCREEN_HEIGTH / vir_rez;
+                DrawRectangle((angh)*scx,(angv)*scy,scx,scy,cl);
+            }
+        }
     }
 }
 

@@ -9,8 +9,12 @@
 
 OctTreeNode::OctTreeNode(std::optional<Color> fill, i32 size){this->fill = fill;this->size = size;}
 OctTree::OctTree(i32 size){
+    this->size=size;
     std::unique_ptr<OctTreeNode> root(new OctTreeNode({},size));
     this->root.swap(root);
+}
+void OctTree::clear(){
+    this->root.reset(new OctTreeNode({},this->size));
 }
 
 const double __QT_RAY_e = 0.000001;

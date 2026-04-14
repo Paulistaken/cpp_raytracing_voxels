@@ -17,8 +17,10 @@ class OctTreeNode{
 };
 class OctTree{
     public:
+    i32 size;
     std::unique_ptr<OctTreeNode> root;
     OctTree(i32 size);
+    void clear();
 };
 void otree_insert_node(OctTree& tree, const Color& fill, const Vec3& position, const i32& size);
 bool otree_is_pos_filled(const OctTree& tree, const Vec3& position);
