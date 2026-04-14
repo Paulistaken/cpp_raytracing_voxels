@@ -8,6 +8,7 @@
 #include "otree_ray.hpp"
 #include <optional>
 #include <utility>
+#include <vector>
 
 const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = 600;
@@ -23,10 +24,16 @@ typedef DT3::Transform3 Transform3;
 typedef DTMat::Mat3 Mat3;
 
 void create_otree(OctTree& otree);
+void generate_sphere(OctTree& octree, const Vec3& center, double size, i32 voxelsize,const std::vector<Color>& fill);
 void render_camera_view(const OctTree& otree, const Transform3& cam);
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam);
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, double build_size, i32 build_vx);
 
 int main(){
+
+    Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
+    u32 select_build_color = 0;
+    double build_size = 0.5;
+    i32 build_vx_size = -3;
 
     //128x128x128
     OctTree otree(7);
@@ -50,7 +57,7 @@ int main(){
 
         render_camera_view(otree,cam);
         if (show_preview) render_camera_view(otree_preview,cam);
-        if (show_preview) insert_blocks(otree, otree_preview, cam);
+        if (show_preview) insert_blocks(otree, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
 
         Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         Vec3 move_dir = DTMat::from_euler_angles(Vec3(0,cam.euler_angle.y,0))*move_axis;
@@ -83,6 +90,13 @@ int main(){
         DrawText(TextFormat("yaw: %f, pitch: %f", cam.euler_angle.y, cam.euler_angle.x),0,16,16,YELLOW);
         DrawFPS(0, 48);
 
+        for (int i = 0; i < 5; i++){
+            if (select_build_color == i) DrawRectangle(i*32, SCREEN_HEIGTH-32, 32, 32, BLACK);
+            DrawRectangle(i*32+4, SCREEN_HEIGTH-32+4, 24, 24, build_colors[i]);
+        }
+        DrawText(TextFormat("Build size: %f",build_size), 0, SCREEN_HEIGTH-64, 16, YELLOW);
+        DrawText(TextFormat("Build detail: 2^%d",build_vx_size), 0, SCREEN_HEIGTH-48, 16, YELLOW);
+
         EndDrawing();
 
         cam.euler_angle.y += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
@@ -91,30 +105,44 @@ int main(){
         show_map = IsKeyPressed(KEY_M) ? !show_map : show_map;
         show_preview = IsKeyPressed(KEY_P) ? !show_preview : show_preview;
 
+        select_build_color = (select_build_color + IsKeyPressed(KEY_O))%5;
+        build_size += (IsKeyPressed(KEY_L)-IsKeyPressed(KEY_K))*0.1;
+        build_vx_size += IsKeyPressed(KEY_J)-IsKeyPressed(KEY_H);
+
     }
 }
 
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam) {
+void generate_sphere(OctTree& otree, const Vec3& center, double size, i32 voxelsize, const std::vector<Color>& fill){
+    double step = std::pow(2.0,voxelsize);
+    for (double px = center.x - size;px <= center.x + size; px += step){
+        for (double py = center.y - size;py <= center.y + size; py += step){
+            for (double pz = center.z - size;pz <= center.z + size; pz += step){
+                if (Vec3(px,py,pz).dist(center)>size) continue;
+                u32 rsz = GetRandomValue(0, fill.size()-1);
+                otree_insert_node(otree, fill[rsz], Vec3(px,py,pz), voxelsize);
+            }
+        }
+    }
+}
+
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, double build_size, i32 vx) {
     Vec3 cam_forward = cam.get_forward();
     auto forward_ray = OCTTree::otree_sendray(otree, cam.pos, cam.get_forward());
-
+    Vec3 insert_pos;
     if (forward_ray.has_value()){
         auto [ray_pos,ray_v] = forward_ray.value();
-        Vec3 insert_pos = ray_pos - (cam_forward*0.5);
-        if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
-            otree_insert_node(otree, WHITE, insert_pos, 0);
-        }else{
-            otree_preview.clear();
-            otree_insert_node(otree_preview, Color{255,255,255,200}, insert_pos, 0);
-        }
+        insert_pos = ray_pos - (cam_forward*0.5);
     }else {
-        Vec3 insert_pos = cam.pos + cam_forward * 20;
-        if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
-            otree_insert_node(otree, WHITE, insert_pos, 0);
-        }else{
-            otree_preview.clear();
-            otree_insert_node(otree_preview, Color{255,255,255,200}, insert_pos, 0);
-        }
+        insert_pos = cam.pos + cam_forward * 20;
+    }
+    otree_preview.clear();
+    if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
+        Color clr = build_colors[select_build_color];
+        generate_sphere(otree, insert_pos, build_size, vx, {clr});
+    }else{
+        Color clr = build_colors[select_build_color];
+        clr.a = 200;
+        generate_sphere(otree_preview, insert_pos, build_size, vx, {clr});
     }
 }
 
@@ -156,6 +184,8 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
         }
     }
 }
+
+
 
 void create_otree(OctTree& otree){
     Color clrs[11] = {RED,GREEN,BLUE,PINK,YELLOW,PURPLE,WHITE, DARKBLUE, DARKGREEN, DARKPURPLE, BROWN};
