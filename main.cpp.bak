@@ -5,7 +5,6 @@
 
 #include "dtypes.hpp"
 #include "otree.hpp"
-#include "otree_ray.hpp"
 #include <optional>
 #include <utility>
 
@@ -108,12 +107,9 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
             otree_insert_node(otree_preview, Color{255,255,255,200}, insert_pos, 0);
         }
     }else {
-        Vec3 insert_pos = cam.pos + cam_forward * 20;
+        Vec3 insert_pos = cam.pos + cam_forward * 5;
         if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
             otree_insert_node(otree, WHITE, insert_pos, 0);
-        }else{
-            otree_preview.clear();
-            otree_insert_node(otree_preview, Color{255,255,255,200}, insert_pos, 0);
         }
     }
 }
@@ -124,8 +120,6 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
     double anglestep_v = 60.0 / vir_rez;
     double anglestep_h = 60.0 / VIR_REZ;
 
-    OCTRay::OCTRayOptions opts;
-    opts.max_detail(0);
     for (int angv = 0; angv <= vir_rez; angv++){
         for(int angh = 0; angh <= VIR_REZ; angh++){
             
@@ -140,8 +134,7 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
             Vec3 cam_dir = rotcam * Vec3(0,0,1);
             Vec3 dir = rot * cam_dir;
 
-            OCTRay::OCTRay ray = OCTRay::OCTRay(cam.pos,dir);
-            auto vl = ray.send_ray(otree, opts);
+            auto vl = otree_sendray(otree, cam.pos, dir);
             if (vl.has_value()){
                 auto [vpos, vcol] = vl.value();
                 double dst = 1.0/std::max(vpos.dist(cam.pos)/5.0,1.0);

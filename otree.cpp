@@ -1,11 +1,16 @@
 
 #include "otree.hpp"
+#include "dtypes.hpp"
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <raylib.h>
 #include <stack>
 #include <tuple>
+
+namespace OCTTree{
+
+typedef DT3::Vec3 Vec3;
 
 OctTreeNode::OctTreeNode(std::optional<Color> fill, i32 size){this->fill = fill;this->size = size;}
 OctTree::OctTree(i32 size){
@@ -134,4 +139,6 @@ void otree_insert_node(OctTree& tree,const Color& fill, const Vec3& position, co
         c_node = &c_node->get()->children[id].value();
         continue;
     }
+}
+
 }

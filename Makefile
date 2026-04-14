@@ -1,5 +1,5 @@
 build:
-	clang++ dtypes.cpp qtree.cpp otree.cpp main.cpp -lraylib -o ray.out
+	clang++ dtypes.cpp otree.cpp otree_ray.cpp main.cpp -lraylib -o ray.out
 run :
 	make build
 	./ray.out
