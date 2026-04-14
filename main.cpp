@@ -53,6 +53,12 @@ int main(){
     while(!WindowShouldClose()){
         ClearBackground(Color{20,50,200,255});
 
+        auto mouse_pos = GetMousePosition();
+
+        DisableCursor();
+        EnableCursor();
+        HideCursor();
+
         BeginDrawing();
 
         render_camera_view(otree,cam);
@@ -99,6 +105,11 @@ int main(){
 
         EndDrawing();
 
+        double mpx = (mouse_pos.x - SCREEN_WIDTH / 2.0) / SCREEN_WIDTH;
+        double mpy = (mouse_pos.y - SCREEN_HEIGTH / 2.0) / SCREEN_HEIGTH;
+        cam.euler_angle.y += mpx*15.0*ROTSPEED;
+        cam.euler_angle.x += mpy*15.0*ROTSPEED;
+
         cam.euler_angle.y += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         cam.euler_angle.x += (-IsKeyDown(KEY_UP) + IsKeyDown(KEY_DOWN)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
 
@@ -106,6 +117,7 @@ int main(){
         show_preview = IsKeyPressed(KEY_P) ? !show_preview : show_preview;
 
         select_build_color = (select_build_color + IsKeyPressed(KEY_O))%5;
+        select_build_color = (select_build_color + IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))%5;
         build_size += (IsKeyPressed(KEY_L)-IsKeyPressed(KEY_K))*0.1;
         build_vx_size += IsKeyPressed(KEY_J)-IsKeyPressed(KEY_H);
 
@@ -131,18 +143,29 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
     Vec3 insert_pos;
     if (forward_ray.has_value()){
         auto [ray_pos,ray_v] = forward_ray.value();
-        insert_pos = ray_pos - (cam_forward*0.5);
+        insert_pos = ray_pos - (cam_forward*(build_size/2));
     }else {
         insert_pos = cam.pos + cam_forward * 20;
     }
     otree_preview.clear();
-    if (IsKeyPressed(KEY_RIGHT_CONTROL)) {
-        Color clr = build_colors[select_build_color];
-        generate_sphere(otree, insert_pos, build_size, vx, {clr});
+    if (IsKeyPressed(KEY_RIGHT_CONTROL) || IsMouseButtonPressed(MOUSE_BUTTON_LEFT)) {
+        Color clr1 = build_colors[select_build_color];
+        Color clr2 = build_colors[select_build_color];
+        Color clr3 = build_colors[select_build_color];
+        if (clr1.r < 245) { clr1.r += 10; } else { clr1.r -= 10; }
+        if (clr2.g < 245) { clr2.g += 10; } else { clr2.g -= 10; }
+        if (clr3.b < 245) { clr3.b += 10; } else { clr3.b -= 10; }
+        generate_sphere(otree, insert_pos, build_size, vx, {clr1,clr2,clr3});
     }else{
-        Color clr = build_colors[select_build_color];
-        clr.a = 200;
-        generate_sphere(otree_preview, insert_pos, build_size, vx, {clr});
+        Color clr1 = build_colors[select_build_color];
+        Color clr2 = build_colors[select_build_color];
+        Color clr3 = build_colors[select_build_color];
+        Color clr4 = build_colors[select_build_color];
+        clr1.a = 200;
+        clr2.a = 100;
+        clr3.a = 50;
+        clr4.a = 255;
+        generate_sphere(otree_preview, insert_pos, build_size, vx, {clr1,clr2,clr3,clr4});
     }
 }
 
@@ -172,7 +195,7 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
             auto vl = ray.send_ray(otree, opts);
             if (vl.has_value()){
                 auto [vpos, vcol] = vl.value();
-                double dst = 1.0/std::max(vpos.dist(cam.pos)/5.0,1.0);
+                double dst = 1.0/std::max(vpos.dist(cam.pos)/2.0,1.0);
                 unsigned char clr = dst * vcol.r;
                 unsigned char clg = dst * vcol.g;
                 unsigned char clb = dst * vcol.b;
