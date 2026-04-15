@@ -14,8 +14,8 @@ const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = 600;
 const u32 VIR_REZ = 60;
 
-const double MOVESPEED = 0.5;
-const double ROTSPEED = 0.1;
+const f64 MOVESPEED = 0.5;
+const f64 ROTSPEED = 0.1;
 
 using namespace::OCTTree;
 
@@ -24,15 +24,15 @@ typedef DT3::Transform3 Transform3;
 typedef DTMat::Mat3 Mat3;
 
 void create_otree(OctTree& otree);
-void generate_sphere(OctTree& octree, const Vec3& center, double size, i32 voxelsize,const std::vector<Color>& fill);
+void generate_sphere(OctTree& octree, const Vec3& center, f64 size, i32 voxelsize,const std::vector<Color>& fill);
 void render_camera_view(const OctTree& otree, const Transform3& cam);
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, double build_size, i32 build_vx);
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
 
 int main(){
 
     Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
     u32 select_build_color = 0;
-    double build_size = 0.5;
+    f64 build_size = 0.5;
     i32 build_vx_size = -3;
 
     //128x128x128
@@ -51,7 +51,7 @@ int main(){
     bool show_preview = true;
 
     while(!WindowShouldClose()){
-        ClearBackground(Color{20,50,200,255});
+        ClearBackground(Color{20,125,200,255});
 
         auto mouse_pos = GetMousePosition();
 
@@ -105,8 +105,8 @@ int main(){
 
         EndDrawing();
 
-        double mpx = (mouse_pos.x - SCREEN_WIDTH / 2.0) / SCREEN_WIDTH;
-        double mpy = (mouse_pos.y - SCREEN_HEIGTH / 2.0) / SCREEN_HEIGTH;
+        f64 mpx = (mouse_pos.x - SCREEN_WIDTH / 2.0) / SCREEN_WIDTH;
+        f64 mpy = (mouse_pos.y - SCREEN_HEIGTH / 2.0) / SCREEN_HEIGTH;
         cam.euler_angle.y += mpx*15.0*ROTSPEED;
         cam.euler_angle.x += mpy*15.0*ROTSPEED;
 
@@ -124,11 +124,11 @@ int main(){
     }
 }
 
-void generate_sphere(OctTree& otree, const Vec3& center, double size, i32 voxelsize, const std::vector<Color>& fill){
-    double step = std::pow(2.0,voxelsize);
-    for (double px = center.x - size;px <= center.x + size; px += step){
-        for (double py = center.y - size;py <= center.y + size; py += step){
-            for (double pz = center.z - size;pz <= center.z + size; pz += step){
+void generate_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize, const std::vector<Color>& fill){
+    f64 step = std::pow(2.0,voxelsize);
+    for (f64 px = center.x - size;px <= center.x + size; px += step){
+        for (f64 py = center.y - size;py <= center.y + size; py += step){
+            for (f64 pz = center.z - size;pz <= center.z + size; pz += step){
                 if (Vec3(px,py,pz).dist(center)>size) continue;
                 u32 rsz = GetRandomValue(0, fill.size()-1);
                 otree_insert_node(otree, fill[rsz], Vec3(px,py,pz), voxelsize);
@@ -137,7 +137,7 @@ void generate_sphere(OctTree& otree, const Vec3& center, double size, i32 voxels
     }
 }
 
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, double build_size, i32 vx) {
+void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 vx) {
     Vec3 cam_forward = cam.get_forward();
     auto forward_ray = OCTTree::otree_sendray(otree, cam.pos, cam.get_forward());
     Vec3 insert_pos;
@@ -152,9 +152,15 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
         Color clr1 = build_colors[select_build_color];
         Color clr2 = build_colors[select_build_color];
         Color clr3 = build_colors[select_build_color];
-        if (clr1.r < 245) { clr1.r += 10; } else { clr1.r -= 10; }
-        if (clr2.g < 245) { clr2.g += 10; } else { clr2.g -= 10; }
-        if (clr3.b < 245) { clr3.b += 10; } else { clr3.b -= 10; }
+
+        clr1.r += clr1.r < 235 ? 20 : -20;
+        clr1.g += clr1.g < 235 ? 20 : -20;
+        clr1.b += clr1.b < 235 ? 20 : -20;
+
+        clr2.r -= clr2.r >= 30 ? 30 : -30;
+        clr2.g -= clr2.g >= 30 ? 30 : -30;
+        clr2.b -= clr2.b >= 30 ? 30 : -30;
+
         generate_sphere(otree, insert_pos, build_size, vx, {clr1,clr2,clr3});
     }else{
         Color clr1 = build_colors[select_build_color];
@@ -172,19 +178,19 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
 void render_camera_view(const OctTree& otree, const Transform3& cam){
     const u32 vir_rez = VIR_REZ * SCREEN_HEIGTH /  SCREEN_WIDTH;
 
-    double anglestep_v = 60.0 / vir_rez;
-    double anglestep_h = 60.0 / VIR_REZ;
+    f64 anglestep_v = 60.0 / vir_rez;
+    f64 anglestep_h = 60.0 / VIR_REZ;
 
     OCTRay::OCTRayOptions opts;
     opts.max_detail(0);
     for (int angv = 0; angv <= vir_rez; angv++){
         for(int angh = 0; angh <= VIR_REZ; angh++){
             
-            double anglh = angh * anglestep_h - 30.0;
-            double anglv = angv * anglestep_v - 30.0;
+            f64 anglh = angh * anglestep_h - 30.0;
+            f64 anglv = angv * anglestep_v - 30.0;
 
-            double cam_h = anglh / 180.0 * PI;
-            double cam_v = anglv / 180.0 * PI;
+            f64 cam_h = anglh / 180.0 * PI;
+            f64 cam_v = anglv / 180.0 * PI;
 
             Mat3 rotcam = DTMat::from_euler_angles(Vec3(cam_v,cam_h,0));
             Mat3 rot = DTMat::from_euler_angles(cam.euler_angle);
@@ -195,10 +201,13 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
             auto vl = ray.send_ray(otree, opts);
             if (vl.has_value()){
                 auto [vpos, vcol] = vl.value();
-                double dst = 1.0/std::max(vpos.dist(cam.pos)/2.0,1.0);
-                unsigned char clr = dst * vcol.r;
-                unsigned char clg = dst * vcol.g;
-                unsigned char clb = dst * vcol.b;
+                f64 dst = 1.0/std::max(vpos.dist(cam.pos)/10.0,1.0);
+                unsigned char clr = dst * vcol.r 
+                    + GetRandomValue(-std::min(vcol.r,(unsigned char)(5)), std::min((unsigned char)(255-vcol.r),(unsigned char)(5)));
+                unsigned char clg = dst * vcol.g 
+                    + GetRandomValue(-std::min(vcol.g,(unsigned char)(5)), std::min((unsigned char)(255-vcol.g),(unsigned char)(5)));
+                unsigned char clb = dst * vcol.b 
+                    + GetRandomValue(-std::min(vcol.b,(unsigned char)(5)), std::min((unsigned char)(255-vcol.b),(unsigned char)(5)));
                 auto cl = Color{clr,clg,clb,vcol.a};
                 int scx = SCREEN_WIDTH / VIR_REZ;
                 int scy = SCREEN_HEIGTH / vir_rez;
@@ -213,10 +222,10 @@ void render_camera_view(const OctTree& otree, const Transform3& cam){
 void create_otree(OctTree& otree){
     Color clrs[11] = {RED,GREEN,BLUE,PINK,YELLOW,PURPLE,WHITE, DARKBLUE, DARKGREEN, DARKPURPLE, BROWN};
     int stepsz = -4;
-    double step = std::pow(2.0,stepsz);
-    for(double ix = 18; ix <= 32; ix+=step){
-    for(double iy = 18; iy <= 32; iy+=step){
-    for(double iz = 18; iz <= 32; iz+=step){
+    f64 step = std::pow(2.0,stepsz);
+    for(f64 ix = 18; ix <= 32; ix+=step){
+    for(f64 iy = 18; iy <= 32; iy+=step){
+    for(f64 iz = 18; iz <= 32; iz+=step){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
@@ -225,9 +234,9 @@ void create_otree(OctTree& otree){
     }
     }
     }
-    for(double ix = 18; ix <= 25; ix+=step){
-    for(double iy = 18; iy <= 32; iy+=step){
-    for(double iz = 18; iz <= 32; iz+=step){
+    for(f64 ix = 18; ix <= 25; ix+=step){
+    for(f64 iy = 18; iy <= 32; iy+=step){
+    for(f64 iz = 18; iz <= 32; iz+=step){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
@@ -236,9 +245,9 @@ void create_otree(OctTree& otree){
     }
     }
     }
-    for(double ix = 25; ix <= 32; ix+=1){
-    for(double iy = 18; iy <= 32; iy+=1){
-    for(double iz = 18; iz <= 32; iz+=1){
+    for(f64 ix = 25; ix <= 32; ix+=1){
+    for(f64 iy = 18; iy <= 32; iy+=1){
+    for(f64 iz = 18; iz <= 32; iz+=1){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
@@ -248,9 +257,9 @@ void create_otree(OctTree& otree){
     }
     }
 
-    for(double ix = 8; ix <= 22; ix+=1){
-    for(double iy = 8; iy <= 22; iy+=1){
-    for(double iz = 8; iz <= 22; iz+=1){
+    for(f64 ix = 8; ix <= 22; ix+=1){
+    for(f64 iy = 8; iy <= 22; iy+=1){
+    for(f64 iz = 8; iz <= 22; iz+=1){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(15,15,15))>5)continue;
         int rind = GetRandomValue(0, 10);
@@ -260,8 +269,8 @@ void create_otree(OctTree& otree){
     }
     }
 
-    double ps1 = 0;
-    double ps2 = 0;
+    f64 ps1 = 0;
+    f64 ps2 = 0;
     for(int i = 0; i <= 10; i++){
         int sz = 3-i;
         int rind = GetRandomValue(0, 10);

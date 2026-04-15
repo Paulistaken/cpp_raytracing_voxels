@@ -1,4 +1,6 @@
 #include "otree_ray.hpp"
+#include "otree.hpp"
+#include <algorithm>
 #include <cmath>
 #include <stack>
 namespace OCTTree::OCTRay {
@@ -9,7 +11,41 @@ namespace OCTTree::OCTRay {
     }
 
 
-const double __QT_RAY_e = 0.000001;
+    const f64 __QT_RAY_e = 0.000001;
+
+    bool ray_in_area (const Vec3& rp, const Vec3& ap, f64 as){
+        return rp.x >= ap.x && rp.x < ap.x + as&&rp.y >= ap.y && rp.y < ap.y + as&&rp.z >= ap.z && rp.z < ap.z + as;
+    }
+
+    std::optional<Vec3> translate_ray(const OctTree& tree, const Vec3& orgin, const Vec3& dir){
+        f64 size = std::pow(2.0,tree.size);
+        if (ray_in_area(orgin,Vec3(),size)) return orgin;
+
+        if ( (orgin.x < 0 && dir.x <= 0) || (orgin.x >= size && dir.x >= 0) ) return {};
+        if ( (orgin.y < 0 && dir.y <= 0) || (orgin.y >= size && dir.y >= 0) ) return {};
+        if ( (orgin.z < 0 && dir.z <= 0) || (orgin.z >= size && dir.z >= 0) ) return {};
+
+        Vec3 c1 = Vec3(0,0,0);
+        Vec3 c2 = c1 + Vec3(size,size,size);
+        c1 += Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
+        c2 -= Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
+
+        f64 t = 10000;
+        f64 tx = ((dir.x < 0 ? c2.x : c1.x) - orgin.x) / dir.x; 
+        f64 ty = ((dir.y < 0 ? c2.y : c1.y) - orgin.y) / dir.y; 
+        f64 tz = ((dir.z < 0 ? c2.z : c1.z) - orgin.z) / dir.z; 
+        t = std::min(t, tx > 0 ? tx : t);
+        t = std::min(t, ty > 0 ? tx : t);
+        t = std::min(t, tz > 0 ? tx : t);
+
+        Vec3 norgin = orgin + (dir * t);
+        if (ray_in_area(norgin,Vec3(),size)) return norgin;
+
+        return {};
+    }
+
+
+
     std::optional<RayResult> OCTRay::send_ray(const OctTree& tree, const std::optional<OCTRayOptions>& opt) const{
         Vec3 cpos = Vec3(0,0,0);
         Vec3 dir = this->direction;
@@ -19,6 +55,8 @@ const double __QT_RAY_e = 0.000001;
         qu.push({&tree.root,Vec3(0,0,0)});
 
         Vec3 ray_pos = Vec3(this->orgin);
+        auto nray_pos = translate_ray(tree, ray_pos, dir);
+        if (nray_pos.has_value()) ray_pos = nray_pos.value(); else return {};
 
         while(true){
 
@@ -29,16 +67,9 @@ const double __QT_RAY_e = 0.000001;
                 std::tuple<Vec3,Color> rt = {ray_pos,clr}; 
                 return rt;
             }
-            double psize = std::pow(2,c_node->get()->size);
+            f64 psize = std::pow(2,c_node->get()->size);
 
-            if(
-                    ray_pos.x >= map_pos.x + psize ||
-                    ray_pos.y >= map_pos.y + psize || 
-                    ray_pos.z >= map_pos.z + psize || 
-                    ray_pos.x < map_pos.x ||
-                    ray_pos.y < map_pos.y ||
-                    ray_pos.z < map_pos.z
-                    ){
+            if (!ray_in_area(ray_pos, map_pos, psize)){
                 qu.pop();
                 continue;
             }
@@ -59,12 +90,12 @@ const double __QT_RAY_e = 0.000001;
                 c1 -= Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
                 c2 += Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
 
-                double t = 10000;
-                double tx =  ((dir.x > 0 ? c2.x : c1.x) - ray_pos.x) / dir.x;
+                f64 t = 10000;
+                f64 tx =  ((dir.x > 0 ? c2.x : c1.x) - ray_pos.x) / dir.x;
                 t = tx == 0 ? t : std::min(tx,t);
-                double ty = ((dir.y > 0 ? c2.y : c1.y) - ray_pos.y) / dir.y;
+                f64 ty = ((dir.y > 0 ? c2.y : c1.y) - ray_pos.y) / dir.y;
                 t = ty == 0 ? t : std::min(ty,t);
-                double tz = ((dir.z > 0 ? c2.z : c1.z) - ray_pos.z) / dir.z;
+                f64 tz = ((dir.z > 0 ? c2.z : c1.z) - ray_pos.z) / dir.z;
                 t = tz == 0 ? t : std::min(tz,t);
 
                 Vec3 tmv = dir * std::min(tx,std::min(ty,tz));

@@ -1,17 +1,18 @@
 #include "dtypes.hpp"
 #include <cmath>
+#include <ostream>
 
 namespace DT2{
     Vec2::Vec2(const Vec2& other){this->x=other.x;this->y=other.y;}
-    Vec2::Vec2(const double& x, const double& y) {this->x=x;this->y=y;}
+    Vec2::Vec2(const f64& x, const f64& y) {this->x=x;this->y=y;}
     Vec2::Vec2(){this->x=0;this->y=0;}
     Vec2 Vec2::operator+(const Vec2& other) const { return Vec2(this->x+other.x,this->y+other.y); }
     void Vec2::operator+=(const Vec2& other) {this->x += other.x;this->y += other.y;}
     Vec2 Vec2::operator-(const Vec2& other) const { return Vec2(this->x-other.x,this->y-other.y); }
     void Vec2::operator-=(const Vec2& other) {this->x -= other.x;this->y -= other.y;}
-    Vec2 Vec2::operator*(const double& v) const { return Vec2(this->x*v,this->y*v); }
+    Vec2 Vec2::operator*(const f64& v) const { return Vec2(this->x*v,this->y*v); }
 
-    double Vec2::dist(const Vec2& other) const{
+    f64 Vec2::dist(const Vec2& other) const{
         return std::sqrt(std::pow(this->x-other.x,2)+std::pow(this->y-other.y,2));
     }
     Rect2::Rect2() {this->x=0;this->y=0;this->w=0;this->h=0;}
@@ -23,19 +24,23 @@ namespace DT2{
 
 namespace DT3{
     Vec3::Vec3(const Vec3& other){this->x=other.x;this->y=other.y;this->z=other.z;}
-    Vec3::Vec3(const double& x, const double& y,const double& z) {this->x=x;this->y=y;this->z=z;}
+    Vec3::Vec3(const f64& x, const f64& y,const f64& z) {this->x=x;this->y=y;this->z=z;}
     Vec3::Vec3(){this->x=0;this->y=0;this->z=0;}
     Vec3 Vec3::operator+(const Vec3& other) const { return Vec3(this->x+other.x,this->y+other.y,this->z+other.z); }
     void Vec3::operator+=(const Vec3& other) {this->x += other.x;this->y += other.y;this->z += other.z;}
     Vec3 Vec3::operator-(const Vec3& other) const { return Vec3(this->x-other.x,this->y-other.y,this->z-other.z); }
     void Vec3::operator-=(const Vec3& other) {this->x -= other.x;this->y -= other.y;this->z-=other.z;}
-    Vec3 Vec3::operator*(const double& v) const { return Vec3(this->x*v,this->y*v,this->z*v); }
-    void Vec3::operator*=(const double& v) { this->x*=v;this->y*=v;this->z*=v; }
+    Vec3 Vec3::operator*(const f64& v) const { return Vec3(this->x*v,this->y*v,this->z*v); }
+    void Vec3::operator*=(const f64& v) { this->x*=v;this->y*=v;this->z*=v; }
 
-    double Vec3::dist(const Vec3& other) const{
+    std::ostream& Vec3::operator<<(std::ostream& os) const{
+        return os << "x:" << this->x << ", y:" << this->y <<", z:" << this->z;
+    }
+
+    f64 Vec3::dist(const Vec3& other) const{
         return std::sqrt(std::pow(this->x-other.x,2)+std::pow(this->y-other.y,2)+std::pow(this->z-other.z,2));
     }
-    double Vec3::abs() const{
+    f64 Vec3::abs() const{
         return std::sqrt(std::pow(this->x,2)+std::pow(this->y,2)+std::pow(this->z,2));
     }
 
@@ -57,7 +62,7 @@ namespace DTMat{
         #pragma omp simd
         for(int i=0;i<9;i++){this->data[i]=data.data[i];}
     }
-    Mat3::Mat3(const double data[9]){
+    Mat3::Mat3(const f64 data[9]){
         #pragma omp simd
         for(int i=0;i<9;i++){this->data[i]=data[i];}
     }
@@ -75,10 +80,10 @@ namespace DTMat{
     }
 
     Vec3 Mat3::operator*(const Vec3& v) const{
-        double nvdt[3] = {0,0,0};
+        f64 nvdt[3] = {0,0,0};
         for(int i1=0;i1<3;i1++){
             for(int i3=0;i3<3;i3++){
-                double vdt[3] = {v.x,v.y,v.z};
+                f64 vdt[3] = {v.x,v.y,v.z};
                 nvdt[i1]+=this->data[i3+(i1*3)]*vdt[i3];
             }
         }
@@ -91,8 +96,8 @@ namespace DTMat{
     }
 
     Mat3 from_euler_angles(const Vec3& angle){
-        double rot_v[9] = {1,0,0,0,std::cos(angle.x),std::sin(angle.x),0,-std::sin(angle.x),std::cos(angle.x)}; 
-        double rot_h[9] = {std::cos(angle.y),0,-std::sin(angle.y),0,1,0,std::sin(angle.y),0,std::cos(angle.y)}; 
+        f64 rot_v[9] = {1,0,0,0,std::cos(angle.x),std::sin(angle.x),0,-std::sin(angle.x),std::cos(angle.x)}; 
+        f64 rot_h[9] = {std::cos(angle.y),0,-std::sin(angle.y),0,1,0,std::sin(angle.y),0,std::cos(angle.y)}; 
         Mat3 rot = Mat3(rot_v)*Mat3(rot_h);
         return rot;
     }

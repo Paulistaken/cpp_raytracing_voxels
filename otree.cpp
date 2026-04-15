@@ -22,7 +22,7 @@ void OctTree::clear(){
     this->root.reset(new OctTreeNode({},this->size));
 }
 
-const double __QT_RAY_e = 0.000001;
+const f64 __QT_RAY_e = 0.000001;
 
 std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir){
     Vec3 cpos = Vec3(0,0,0);
@@ -42,7 +42,7 @@ std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const V
             std::tuple<Vec3,Color> rt = {ray_pos,clr}; 
             return rt;
         }
-        double psize = std::pow(2,c_node->get()->size);
+        f64 psize = std::pow(2,c_node->get()->size);
 
         if(
                 ray_pos.x >= map_pos.x + psize ||
@@ -72,13 +72,13 @@ std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const V
             c1 -= Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
             c2 += Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
 
-            double tx = 10000;
+            f64 tx = 10000;
             if (dir.x > 0 && c2.x != ray_pos.x) tx = std::min(tx,(c2.x-ray_pos.x)/dir.x);
             if (dir.x < 0 && c1.x != ray_pos.x) tx = std::min(tx,(c1.x-ray_pos.x)/dir.x);
-            double ty = 10000;
+            f64 ty = 10000;
             if (dir.y > 0 && c2.y != ray_pos.y) ty = std::min(ty,(c2.y-ray_pos.y)/dir.y);
             if (dir.y < 0 && c1.y != ray_pos.y) ty = std::min(ty,(c1.y-ray_pos.y)/dir.y);
-            double tz = 10000;
+            f64 tz = 10000;
             if (dir.z > 0 && c2.z != ray_pos.z) tz = std::min(ty,(c2.z-ray_pos.z)/dir.z);
             if (dir.z < 0 && c1.z != ray_pos.z) tz = std::min(ty,(c1.z-ray_pos.z)/dir.z);
             Vec3 tmv = dir * std::min(tx,std::min(ty,tz));
@@ -93,7 +93,7 @@ std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const V
 bool otree_is_pos_filled(const OctTree& tree, const Vec3& position){
     Vec3 c_pos = Vec3(0,0,0); 
     OTNcpointer c_node = &tree.root;
-    double psize = std::pow(2,c_node->get()->size);
+    f64 psize = std::pow(2,c_node->get()->size);
     if (position.x > psize || position.y > psize || position.z > psize) return false;
     while(true){
         psize = std::pow(2,c_node->get()->size);
@@ -118,10 +118,10 @@ bool otree_is_pos_filled(const OctTree& tree, const Vec3& position){
 void otree_insert_node(OctTree& tree,const Color& fill, const Vec3& position, const i32& size){
     Vec3 c_pos = Vec3(0,0,0); 
     OTNcpointer c_node = &tree.root;
-    double psize = std::pow(2,c_node->get()->size);
+    f64 psize = std::pow(2,c_node->get()->size);
     if (position.x > psize || position.y > psize || position.z > psize) return;
     while(true){
-        psize = std::pow(2.0,(double)c_node->get()->size);
+        psize = std::pow(2.0,(f64)c_node->get()->size);
         if (
                 c_node->get()->size <= size
            ){

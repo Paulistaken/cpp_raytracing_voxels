@@ -10,10 +10,10 @@ typedef std::tuple<Vec3, Color> RayResult;
 
 class OCTRayOptions{
     public:
-    std::optional<double> range;
+    std::optional<f64> range;
     std::optional<i32> max_coll;
     OCTRayOptions() {};
-    void max_range(double v) {this->range = v;}
+    void max_range(f64 v) {this->range = v;}
     void max_detail(i32 v) {this->max_coll = v;}
 };
 class OCTRay{
