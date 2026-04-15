@@ -13,15 +13,15 @@ class OCTRayOptions{
     std::optional<f64> range;
     std::optional<i32> max_coll;
     OCTRayOptions() {};
-    void max_range(f64 v) {this->range = v;}
-    void max_detail(i32 v) {this->max_coll = v;}
+    fn max_range(f64 v) -> void;
+    fn max_detail(i32 v) -> void; 
 };
 class OCTRay{
     public:
     Vec3 orgin;
     Vec3 direction;
     OCTRay(const Vec3&, const Vec3&);
-    std::optional<RayResult> send_ray(const OctTree&, const std::optional<OCTRayOptions>&) const;
+    fn send_ray(const OctTree&, const std::optional<OCTRayOptions>&) const -> std::optional<RayResult>;
 };
 
 }

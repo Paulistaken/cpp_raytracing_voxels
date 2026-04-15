@@ -19,14 +19,14 @@ namespace OCTTree{
     };
     class OctTree{
         public:
+        Vec3 position;
         i32 size;
         std::unique_ptr<OctTreeNode> root;
         OctTree(i32 size);
-        void clear();
+        fn clear() -> void;
+        fn insert_node(const Color& fill, const Vec3& position, const i32& size) -> void;
+        fn is_pos_filled(const Vec3& position) const -> std::optional<Color>;
     };
-    void otree_insert_node(OctTree& tree, const Color& fill, const Vec3& position, const i32& size);
-    bool otree_is_pos_filled(const OctTree& tree, const Vec3& position);
-    std::optional<std::tuple<Vec3,Color>> otree_sendray(const OctTree& tree, const Vec3& orgin, const Vec3& dir);
 
     typedef const std::unique_ptr<OctTreeNode>* OTNcpointer;
 

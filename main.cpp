@@ -76,10 +76,10 @@ int main(){
         cam.pos += mov_velocity;
 
         if (show_map) {
-            auto avl = OCTTree::otree_sendray(otree, cam.pos, cam.get_forward());
+            auto avl = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).send_ray(otree, {});
             for(i32 x = 0; x < 60; x++){
                 for(i32 y = 0; y < 60; y++){
-                    if (!OCTTree::otree_is_pos_filled(otree, Vec3(x,cam.pos.y,y))) continue;
+                    if (!otree.is_pos_filled(Vec3(x,cam.pos.y,y))) continue;
                     DrawRectangle(x*10, y*10, 10, 10, BLUE);
                 }
             }
@@ -131,7 +131,7 @@ void generate_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize
             for (f64 pz = center.z - size;pz <= center.z + size; pz += step){
                 if (Vec3(px,py,pz).dist(center)>size) continue;
                 u32 rsz = GetRandomValue(0, fill.size()-1);
-                otree_insert_node(otree, fill[rsz], Vec3(px,py,pz), voxelsize);
+                otree.insert_node(fill[rsz], Vec3(px,py,pz), voxelsize);
             }
         }
     }
@@ -139,7 +139,7 @@ void generate_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize
 
 void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 vx) {
     Vec3 cam_forward = cam.get_forward();
-    auto forward_ray = OCTTree::otree_sendray(otree, cam.pos, cam.get_forward());
+    auto forward_ray = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).send_ray(otree, {});
     Vec3 insert_pos;
     if (forward_ray.has_value()){
         auto [ray_pos,ray_v] = forward_ray.value();
@@ -169,8 +169,8 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
         Color clr4 = build_colors[select_build_color];
         clr1.a = 200;
         clr2.a = 100;
-        clr3.a = 50;
-        clr4.a = 255;
+        clr3.a = 150;
+        clr4.a = 225;
         generate_sphere(otree_preview, insert_pos, build_size, vx, {clr1,clr2,clr3,clr4});
     }
 }
@@ -229,7 +229,7 @@ void create_otree(OctTree& otree){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], cpos + Vec3(-15,0,0), stepsz);
+        otree.insert_node(clrs[rind], cpos+Vec3(-15,0,0), stepsz);
 
     }
     }
@@ -240,7 +240,7 @@ void create_otree(OctTree& otree){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], cpos, stepsz);
+        otree.insert_node(clrs[rind], cpos, stepsz);
         
     }
     }
@@ -251,7 +251,7 @@ void create_otree(OctTree& otree){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(25,25,25))>5)continue;
         int rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], cpos, 0);
+        otree.insert_node(clrs[rind], cpos, 0);
         
     }
     }
@@ -263,7 +263,7 @@ void create_otree(OctTree& otree){
         Vec3 cpos = Vec3(ix,iy,iz);
         if (cpos.dist(Vec3(15,15,15))>5)continue;
         int rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], cpos, 0);
+        otree.insert_node(clrs[rind], cpos, 0);
         
     }
     }
@@ -274,9 +274,9 @@ void create_otree(OctTree& otree){
     for(int i = 0; i <= 10; i++){
         int sz = 3-i;
         int rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], Vec3(35+ps1,25,50), sz);
+        otree.insert_node(clrs[rind], Vec3(35+ps1,25,50), sz);
         rind = GetRandomValue(0, 10);
-        otree_insert_node(otree, clrs[rind], Vec3(35+ps2,25,50), sz);
+        otree.insert_node(clrs[rind], Vec3(35+ps2,25,50), sz);
         ps1 += std::pow(2.0,sz);
         ps2 -= std::pow(2.0,sz-1);
     }

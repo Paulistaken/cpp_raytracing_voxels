@@ -1,5 +1,6 @@
 #include "dtypes.hpp"
 #include <cmath>
+#include <iostream>
 #include <ostream>
 
 namespace DT2{
@@ -30,8 +31,8 @@ namespace DT3{
     void Vec3::operator+=(const Vec3& other) {this->x += other.x;this->y += other.y;this->z += other.z;}
     Vec3 Vec3::operator-(const Vec3& other) const { return Vec3(this->x-other.x,this->y-other.y,this->z-other.z); }
     void Vec3::operator-=(const Vec3& other) {this->x -= other.x;this->y -= other.y;this->z-=other.z;}
-    Vec3 Vec3::operator*(const f64& v) const { return Vec3(this->x*v,this->y*v,this->z*v); }
-    void Vec3::operator*=(const f64& v) { this->x*=v;this->y*=v;this->z*=v; }
+    Vec3 Vec3::operator*(f64 v) const { return Vec3(this->x*v,this->y*v,this->z*v); }
+    void Vec3::operator*=(f64 v) { this->x*=v;this->y*=v;this->z*=v; }
 
     std::ostream& Vec3::operator<<(std::ostream& os) const{
         return os << "x:" << this->x << ", y:" << this->y <<", z:" << this->z;
@@ -100,6 +101,71 @@ namespace DTMat{
         f64 rot_h[9] = {std::cos(angle.y),0,-std::sin(angle.y),0,1,0,std::sin(angle.y),0,std::cos(angle.y)}; 
         Mat3 rot = Mat3(rot_v)*Mat3(rot_h);
         return rot;
+    }
+
+    Mat3 Mat3::trans() const {
+        Mat3 mat2 = Mat3();
+        for (int i = 0; i < 3; i++){
+            for(int j = 0; j < 3; j++){
+                mat2.data[i+(j*3)]=this->data[j+(i*3)];
+            }
+        }
+        return mat2;
+    }
+    Mat3 Mat3::adj() const {
+        f64 data2[9];
+        for(int j = 0; j < 3; j++){
+            u32 j1 = j == 0 ? 1 : 0;
+            u32 j2 = j == 2 ? 1 : 2;
+            for(int i = 0; i < 3; i++){
+                u32 i1 = i == 0 ? 1 : 0;
+                u32 i2 = i == 2 ? 1 : 2;
+                data2[i+(j*3)] = 0;
+                data2[i+(j*3)] += this->data[i1 + (j1 * 3)] * this->data[i2 + (j2 * 3)];
+                data2[i+(j*3)] -= this->data[i1 + (j2 * 3)] * this->data[i2 + (j1 * 3)];
+                data2[i+(j*3)] *= ((i+j)%2==0?1:-1);
+            }
+        }
+        return Mat3(data2).trans();
+    }
+    f64 Mat3::det() const {
+        f64 det = 0;
+        u32 j = 0;
+        u32 j1 = 1;
+        u32 j2 = 2;
+        for(int i = 0; i < 3; i++){
+            u32 i1 = i == 0 ? 1 : 0;
+            u32 i2 = i == 2 ? 1 : 2;
+            f64 mnr1 = this->data[i1+(j1*3)] * this->data[i2+(j2*3)];
+            f64 mnr2 = this->data[i1 + (j2 * 3)] * this->data[i2 + (j1 * 3)];
+            det += this->data[i+(j*3)] * (mnr1-mnr2) * ((i+j)%2 == 0 ? 1 : -1);
+        }
+        return det;
+    }
+
+    auto Mat3::inverse() const -> std::optional<Mat3>{
+        f64 det = this->det();
+        if (det == 0) return {};
+        Mat3 adj = this->adj();
+        return adj / det;
+    }
+
+    auto Mat3::operator*(f64 v) const -> Mat3{
+        Mat3 mt = Mat3(*this);
+        mt *= v;
+        return mt;
+    }
+    auto Mat3::operator/(f64 v) const -> Mat3{
+        Mat3 mt = Mat3(*this);
+        mt /= v;
+        return mt;
+    }
+
+    auto Mat3::operator*=(f64 v) -> void {
+        for(auto& dt : this->data) {dt *= v;}
+    }
+    auto Mat3::operator/=(f64 v) -> void {
+        for(auto& dt : this->data) {dt /= v;}
     }
 
 }
