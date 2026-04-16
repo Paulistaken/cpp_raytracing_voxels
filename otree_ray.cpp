@@ -19,15 +19,16 @@ namespace OCTTree::OCTRay {
         return rp.x >= ap.x && rp.x < ap.x + as&&rp.y >= ap.y && rp.y < ap.y + as&&rp.z >= ap.z && rp.z < ap.z + as;
     }
 
-    auto translate_ray(const OctTree& tree, const Vec3& orgin, const Vec3& dir) -> std::optional<Vec3>{
+    auto translate_ray(const OctTree& tree, const Vec3& oorgin, const Vec3& dir) -> std::optional<Vec3>{
         f64 size = std::pow(2.0,tree.size);
+        Vec3 orgin = oorgin - tree.position;
         if (ray_in_area(orgin,Vec3(),size)) return orgin;
 
-        if ( (orgin.x < tree.position.x && dir.x <= 0) || (orgin.x >= tree.position.x + size && dir.x >= 0) ) return {};
-        if ( (orgin.y < tree.position.y && dir.y <= 0) || (orgin.y >= tree.position.y + size && dir.y >= 0) ) return {};
-        if ( (orgin.z < tree.position.z && dir.z <= 0) || (orgin.z >= tree.position.z + size && dir.z >= 0) ) return {};
+        if ( (orgin.x < 0 && dir.x <= 0) || (orgin.x >= size && dir.x >= 0) ) return {};
+        if ( (orgin.y < 0 && dir.y <= 0) || (orgin.y >= size && dir.y >= 0) ) return {};
+        if ( (orgin.z < 0 && dir.z <= 0) || (orgin.z >= size && dir.z >= 0) ) return {};
 
-        Vec3 c1 = tree.position;
+        Vec3 c1 = Vec3(0,0,0);
         Vec3 c2 = c1 + Vec3(size,size,size);
         c1 += Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
         c2 -= Vec3(__QT_RAY_e,__QT_RAY_e,__QT_RAY_e);
@@ -61,7 +62,6 @@ namespace OCTTree::OCTRay {
         if (nray_pos.has_value()) ray_pos = nray_pos.value(); else return {};
 
         while(true){
-
             if (qu.empty()) break;
             auto [c_node,map_pos] = qu.top();
             if (c_node->get()->fill.has_value()){ 

@@ -1,7 +1,11 @@
+
+#include "render_shader.hpp"
+
 #include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <raylib.h>
+#include "vox_render.hpp"
 
 #include "dtypes.hpp"
 #include "otree.hpp"
@@ -9,6 +13,7 @@
 #include <optional>
 #include <utility>
 #include <vector>
+
 
 const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = 600;
@@ -30,6 +35,15 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
 
 int main(){
 
+    Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
+
+    RenderShader rnd = RenderShader(
+            "render_vs.glsl",
+            "render_fs.glsl",
+            "render_update.glsl",
+            "render_reset.glsl"
+            );
+
     Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
     u32 select_build_color = 0;
     f64 build_size = 0.5;
@@ -37,9 +51,11 @@ int main(){
 
     //128x128x128
     OctTree otree(7);
+    OctTree otree2(6);
     OctTree otree_preview(7);
 
     create_otree(otree);
+    generate_sphere(otree2, Vec3(10,10,10), 5, -2, {WHITE});
 
     InitWindow(600, 600, "ray");
     SetTargetFPS(60);
@@ -50,7 +66,13 @@ int main(){
     bool show_map = false;
     bool show_preview = true;
 
+    f64 o2yaw = 0.0;
+
+    Shader shader = LoadShader(0, "main.glsl");
+
     while(!WindowShouldClose()){
+        otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,10);
+        o2yaw += 0.1;
         ClearBackground(Color{20,125,200,255});
 
         auto mouse_pos = GetMousePosition();
@@ -61,8 +83,11 @@ int main(){
 
         BeginDrawing();
 
-        render_camera_view(otree,cam);
-        if (show_preview) render_camera_view(otree_preview,cam);
+        screen.reset_scr(Color{20,125,200,255});
+        screen.render_otree(otree, cam);
+        screen.render_otree(otree2, cam);
+        if (show_preview) screen.render_otree(otree_preview, cam);
+        screen.render_scr();
         if (show_preview) insert_blocks(otree, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
 
         Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
@@ -174,50 +199,6 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
         generate_sphere(otree_preview, insert_pos, build_size, vx, {clr1,clr2,clr3,clr4});
     }
 }
-
-void render_camera_view(const OctTree& otree, const Transform3& cam){
-    const u32 vir_rez = VIR_REZ * SCREEN_HEIGTH /  SCREEN_WIDTH;
-
-    f64 anglestep_v = 60.0 / vir_rez;
-    f64 anglestep_h = 60.0 / VIR_REZ;
-
-    OCTRay::OCTRayOptions opts;
-    opts.max_detail(0);
-    for (int angv = 0; angv <= vir_rez; angv++){
-        for(int angh = 0; angh <= VIR_REZ; angh++){
-            
-            f64 anglh = angh * anglestep_h - 30.0;
-            f64 anglv = angv * anglestep_v - 30.0;
-
-            f64 cam_h = anglh / 180.0 * PI;
-            f64 cam_v = anglv / 180.0 * PI;
-
-            Mat3 rotcam = DTMat::from_euler_angles(Vec3(cam_v,cam_h,0));
-            Mat3 rot = DTMat::from_euler_angles(cam.euler_angle);
-            Vec3 cam_dir = rotcam * Vec3(0,0,1);
-            Vec3 dir = rot * cam_dir;
-
-            OCTRay::OCTRay ray = OCTRay::OCTRay(cam.pos,dir);
-            auto vl = ray.send_ray(otree, opts);
-            if (vl.has_value()){
-                auto [vpos, vcol] = vl.value();
-                f64 dst = 1.0/std::max(vpos.dist(cam.pos)/10.0,1.0);
-                unsigned char clr = dst * vcol.r 
-                    + GetRandomValue(-std::min(vcol.r,(unsigned char)(5)), std::min((unsigned char)(255-vcol.r),(unsigned char)(5)));
-                unsigned char clg = dst * vcol.g 
-                    + GetRandomValue(-std::min(vcol.g,(unsigned char)(5)), std::min((unsigned char)(255-vcol.g),(unsigned char)(5)));
-                unsigned char clb = dst * vcol.b 
-                    + GetRandomValue(-std::min(vcol.b,(unsigned char)(5)), std::min((unsigned char)(255-vcol.b),(unsigned char)(5)));
-                auto cl = Color{clr,clg,clb,vcol.a};
-                int scx = SCREEN_WIDTH / VIR_REZ;
-                int scy = SCREEN_HEIGTH / vir_rez;
-                DrawRectangle((angh)*scx,(angv)*scy,scx,scy,cl);
-            }
-        }
-    }
-}
-
-
 
 void create_otree(OctTree& otree){
     Color clrs[11] = {RED,GREEN,BLUE,PINK,YELLOW,PURPLE,WHITE, DARKBLUE, DARKGREEN, DARKPURPLE, BROWN};

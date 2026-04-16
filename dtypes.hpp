@@ -10,6 +10,9 @@ typedef unsigned int u32;
 typedef float f32;
 typedef double f64;
 
+typedef char i8;
+typedef unsigned char u8;
+
 namespace DT3{
     class Vec3{
         public:
