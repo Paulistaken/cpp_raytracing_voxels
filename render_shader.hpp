@@ -1,9 +1,12 @@
 #pragma once
-#include "raylib.h"
-#include "rlgl.h"
+#include <raylib.h>
+#include <rlgl.h>
 #include "stdlib.h"
 #include "vox_render.hpp"
 #include <iostream>
+
+#ifndef RENDERSHADER
+#define RENDERSHADER
 
 
 typedef struct{
@@ -26,22 +29,26 @@ class RenderShader{
     private:
     Shader fs_shader;
     int update_shader;
+    int update_shader_p;
     int reset_shader;
+    int reset_shader_p;
     int ssbo0;
     int ssbo1;
     int vao;
+    Texture2D text;
 };
 
 RenderShader::RenderShader(const char* vs,const char* fs, const char* cls, const char* rst){
-#ifdef GRAPHICS_API_OPENGL_43
-    std::cout<<"YES!";
-
-#endif // GRAPHICS_API_OPENGL_43
+    char* upd_code = LoadFileText(cls);
     char* rst_code = LoadFileText(rst);
-    // std::cout<<rst_code<<"\n";
-    std::cout<<"glsl:"<<rlGlVersion()<<"\n";
-    std::cout<<"glsl:"<<rlGetVersion()<<"\n";
+    this->reset_shader = rlLoadShader(rst_code,RL_COMPUTE_SHADER);
+    this->update_shader = rlLoadShader(upd_code,RL_COMPUTE_SHADER);
+    this->reset_shader_p = rlLoadShaderProgramCompute(this->reset_shader);
+    this->update_shader_p = rlLoadShaderProgramCompute(this->update_shader);
+    UnloadFileText(upd_code);
     UnloadFileText(rst_code);
+    this->fs_shader = LoadShader(vs, fs);
+    this->text = LoadTextureFromImage(LoadImage("white.png"));
 }
 void RenderShader::load_screen_data(const Vox_Rend::Screen& scr){
     ScreenData shader_scr;
@@ -59,7 +66,7 @@ void RenderShader::load_screen_data(const Vox_Rend::Screen& scr){
     rlEnableVertexArray(vao);
 }
 void RenderShader::run_screen_reset(){
-    rlEnableShader(this->reset_shader);
+    rlEnableShader(this->reset_shader_p);
     rlBindShaderBuffer(this->ssbo0, 0);
     rlComputeShaderDispatch(60, 60, 1);
     rlDisableShader();
@@ -75,20 +82,35 @@ void RenderShader::run_screen_update(const Vox_Rend::Screen& scr2){
         }
     }
     rlUpdateShaderBuffer(this->ssbo1, &shader_scr, sizeof(shader_scr), 0);
-    rlEnableShader(this->update_shader);
+    rlEnableShader(this->update_shader_p);
     rlBindShaderBuffer(this->ssbo0, 0);
     rlBindShaderBuffer(this->ssbo1, 1);
     rlComputeShaderDispatch(60, 60, 1);
     rlDisableShader();
 }
 void RenderShader::run_screen_render(){
+    rlEnableVertexArray(this->vao);
+    Vector3 vertices[] = {
+        { -0.5, -0.5, 0.0 },
+        { -0.5, 0.5, 0.0 },
+        { 0.5,  0.5, 0.0 }
+    };
+    rlEnableVertexAttribute(0);
+    rlLoadVertexBuffer(vertices,sizeof(vertices),false);
+    rlSetVertexAttribute(0, 3, RL_FLOAT, false, 0, 0);
+    rlDisableVertexArray();
+
     rlEnableShader(this->fs_shader.id);
+
     rlBindShaderBuffer(this->ssbo0, 0);
 
     rlEnableVertexArray(this->vao);
-    rlDrawVertexArrayInstanced(0, 3, 6);
-    rlDisableVertexArray();
+    rlDrawVertexArrayInstanced(0, 3, 3);
+    rlDisableVertexArray(); 
 
     rlDisableShader();
 
 }
+
+#endif // !RENDERSHADER
+       //

@@ -30,6 +30,19 @@ namespace OCTTree{
 
     typedef const std::unique_ptr<OctTreeNode>* OTNcpointer;
 
+    typedef struct {
+        i32 size;
+        u32 filled;
+        i32 children[8];
+    } OctTreeNodeSer;
+    typedef struct {
+        i32 size;
+        u32 lengh;
+        OctTreeNodeSer* nodes;
+    } OctTreeSer;
+
+    OctTreeSer serialize_octtree(const OctTree& octtree);
+
 }
 
 #define OTREEHEADER

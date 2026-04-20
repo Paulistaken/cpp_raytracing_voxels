@@ -34,6 +34,7 @@ void render_camera_view(const OctTree& otree, const Transform3& cam);
 void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
 
 int main(){
+    InitWindow(600, 600, "ray");
 
     Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
 
@@ -57,7 +58,6 @@ int main(){
     create_otree(otree);
     generate_sphere(otree2, Vec3(10,10,10), 5, -2, {WHITE});
 
-    InitWindow(600, 600, "ray");
     SetTargetFPS(60);
 
     Transform3 cam = Transform3({35,25,60},{0.,PI,0.});
@@ -68,7 +68,8 @@ int main(){
 
     f64 o2yaw = 0.0;
 
-    Shader shader = LoadShader(0, "main.glsl");
+    rnd.load_screen_data(screen);
+
 
     while(!WindowShouldClose()){
         otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,10);
@@ -81,6 +82,7 @@ int main(){
         EnableCursor();
         HideCursor();
 
+
         BeginDrawing();
 
         screen.reset_scr(Color{20,125,200,255});
@@ -89,6 +91,9 @@ int main(){
         if (show_preview) screen.render_otree(otree_preview, cam);
         screen.render_scr();
         if (show_preview) insert_blocks(otree, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
+
+        rnd.run_screen_reset();
+        rnd.run_screen_render();
 
         Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         Vec3 move_dir = DTMat::from_euler_angles(Vec3(0,cam.euler_angle.y,0))*move_axis;

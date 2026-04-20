@@ -80,5 +80,43 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
     }
 }
 
+    u32 octree_size(const std::unique_ptr<OctTreeNode>& node){
+        u32 amt = 1;
+        for(const auto& nd : node->children){
+            if(!nd.has_value()) continue;
+            amt += octree_size(nd.value());
+        }
+        return amt;
+    }
+    void serialize_octree_nodes(
+            OctTreeNodeSer* nodes,
+            u32 cindex,
+            u32& avindex,
+            const std::unique_ptr<OctTreeNode>& cnode
+            ){
+        nodes[cindex].size=cnode->size;
+        nodes[cindex].filled=cnode->fill.has_value();
+        for(int i = 0; i < 8; i++){
+            if (!cnode->children[i].has_value()){
+                nodes[cindex].children[i]=-1;
+                continue;
+            }
+            avindex += 1;
+            serialize_octree_nodes(nodes, avindex, avindex, cnode->children[i].value());
+        }
+    }
+    // Malloc wymagany to interfejsowania z kartą graficzną
+    OctTreeSer serialize_octtree(const OctTree& otree){
+        u32 full_size = octree_size(otree.root);
+        OctTreeNodeSer* nodes = (OctTreeNodeSer*)(RL_MALLOC(sizeof(OctTreeNodeSer)*full_size));
+        u32 avindex = 0;
+        serialize_octree_nodes(nodes, 0, avindex, otree.root);
+        OctTreeSer otreeser = OctTreeSer{
+            otree.size,
+            full_size,
+            nodes
+        };
+        return otreeser;
+    }
 
 }

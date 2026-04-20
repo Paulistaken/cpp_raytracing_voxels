@@ -7,7 +7,7 @@ struct PixelData{
 };
 struct ScreenData{
     PixelData pixels[60][60];
-}
+};
 
 
 layout(std430, binding=0) buffer ssbo0 { ScreenData screen_data; };
