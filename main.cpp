@@ -31,7 +31,7 @@ typedef DTMat::Mat3 Mat3;
 void create_otree(OctTree& otree);
 void generate_sphere(OctTree& octree, const Vec3& center, f64 size, i32 voxelsize,const std::vector<Color>& fill);
 void render_camera_view(const OctTree& otree, const Transform3& cam);
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
+void insert_blocks(OctTree& otree, RenderShader& rnd, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
 
 int main(){
     InitWindow(600, 600, "ray");
@@ -39,10 +39,7 @@ int main(){
     Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
 
     RenderShader rnd = RenderShader(
-            "render_vs.glsl",
-            "render_fs.glsl",
-            "render_update.glsl",
-            "render_reset.glsl"
+            "otree.glsl"
             );
 
     Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
@@ -57,6 +54,8 @@ int main(){
 
     create_otree(otree);
     generate_sphere(otree2, Vec3(10,10,10), 5, -2, {WHITE});
+    otree.optimize();
+    otree2.optimize();
 
     SetTargetFPS(60);
 
@@ -68,11 +67,15 @@ int main(){
 
     f64 o2yaw = 0.0;
 
-    rnd.load_screen_data(screen);
-
+    rnd.add_tree_buffer(otree);
+    rnd.add_tree_buffer(otree2);
+    rnd.add_tree_buffer(otree_preview);
 
     while(!WindowShouldClose()){
-        otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,10);
+
+        rnd.update_tree_buffer(1, otree2);
+
+        otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,15);
         o2yaw += 0.1;
         ClearBackground(Color{20,125,200,255});
 
@@ -85,15 +88,14 @@ int main(){
 
         BeginDrawing();
 
-        screen.reset_scr(Color{20,125,200,255});
-        screen.render_otree(otree, cam);
-        screen.render_otree(otree2, cam);
-        if (show_preview) screen.render_otree(otree_preview, cam);
-        screen.render_scr();
-        if (show_preview) insert_blocks(otree, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
+        screen.cpu_reset_scr(Color{20,125,200,255});
 
-        rnd.run_screen_reset();
-        rnd.run_screen_render();
+        rnd.run_raytracing(screen, 0, cam.pos, cam.euler_angle);
+        rnd.run_raytracing(screen, 1, cam.pos, cam.euler_angle);
+        if (show_preview) rnd.run_raytracing(screen, 2, cam.pos, cam.euler_angle);
+        if (show_preview) insert_blocks(otree, rnd, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
+
+        screen.cpu_render_scr();
 
         Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         Vec3 move_dir = DTMat::from_euler_angles(Vec3(0,cam.euler_angle.y,0))*move_axis;
@@ -167,7 +169,15 @@ void generate_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize
     }
 }
 
-void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 vx) {
+void insert_blocks(
+        OctTree& otree, 
+        RenderShader& rnd,
+        OctTree& otree_preview, 
+        const Transform3& cam, 
+        Color* build_colors, 
+        u32 select_build_color, 
+        f64 build_size, 
+        i32 vx) {
     Vec3 cam_forward = cam.get_forward();
     auto forward_ray = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).send_ray(otree, {});
     Vec3 insert_pos;
@@ -192,16 +202,21 @@ void insert_blocks(OctTree& otree, OctTree& otree_preview, const Transform3& cam
         clr2.b -= clr2.b >= 30 ? 30 : -30;
 
         generate_sphere(otree, insert_pos, build_size, vx, {clr1,clr2,clr3});
+        otree.optimize();
+        rnd.update_tree_buffer(0, otree);
+        
     }else{
         Color clr1 = build_colors[select_build_color];
         Color clr2 = build_colors[select_build_color];
         Color clr3 = build_colors[select_build_color];
-        Color clr4 = build_colors[select_build_color];
-        clr1.a = 200;
-        clr2.a = 100;
+        clr1.a = 100;
+        clr2.a = 50;
         clr3.a = 150;
-        clr4.a = 225;
-        generate_sphere(otree_preview, insert_pos, build_size, vx, {clr1,clr2,clr3,clr4});
+        i32 p_vx = std::max(vx,-1);
+        f64 p_buildsize = std::max(std::pow(2.0,(double)p_vx),build_size);
+        generate_sphere(otree_preview, insert_pos, p_buildsize, p_vx, {clr1,clr2,clr3});
+        otree_preview.optimize();
+        rnd.update_tree_buffer(2, otree_preview);
     }
 }
 

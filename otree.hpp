@@ -16,6 +16,7 @@ namespace OCTTree{
         i32 size;
         std::optional<std::unique_ptr<OctTreeNode>> children[8];
         OctTreeNode(std::optional<Color> fill, i32 size);
+        fn optimize() -> void;
     };
     class OctTree{
         public:
@@ -26,18 +27,28 @@ namespace OCTTree{
         fn clear() -> void;
         fn insert_node(const Color& fill, const Vec3& position, const i32& size) -> void;
         fn is_pos_filled(const Vec3& position) const -> std::optional<Color>;
+        fn optimize() -> void;
     };
 
     typedef const std::unique_ptr<OctTreeNode>* OTNcpointer;
 
     typedef struct {
         i32 size;
-        u32 filled;
+        i32 filled_r;
+        i32 filled_g;
+        i32 filled_b;
+        i32 filled_a;
         i32 children[8];
     } OctTreeNodeSer;
     typedef struct {
+        Vector4 pos;
+        i32 size;
+        u32 len;
+    } OctTreeDataSer;
+    typedef struct {
         i32 size;
         u32 lengh;
+        OctTreeDataSer data;
         OctTreeNodeSer* nodes;
     } OctTreeSer;
 

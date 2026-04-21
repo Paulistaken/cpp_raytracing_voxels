@@ -51,7 +51,7 @@ namespace Vox_Rend {
         this->vir_rez_h = vrez_v;
         this->pixels = std::vector(vrez_v,std::vector(vrez,PixelData()));
     }
-    fn Screen::reset_scr(Color bcol) -> void{
+    fn Screen::cpu_reset_scr(Color bcol) -> void{
         for (auto& prow : this->pixels){
             for(auto & px : prow){
                 px.col = bcol;
@@ -65,7 +65,7 @@ namespace Vox_Rend {
         if (deph > pixel.deph) return;
         pixel = col.a==255 ? PixelData(col,deph) : PixelData(mix_colors_a(pixel.col,col),pixel.deph);
     }
-    fn Screen::render_scr() const -> void {
+    fn Screen::cpu_render_scr() const -> void {
         for (int y = 0; y < this->vir_rez_h; y++){
             for(int x = 0; x < this->vir_rez_w; x++){
                 auto& pixel = this->pixels[y][x];
@@ -82,7 +82,7 @@ namespace Vox_Rend {
         return this->pixels[y][x];
     }
 
-    fn Screen::render_otree(const OCTTree::OctTree& otree, const DT3::Transform3& cam) -> void{
+    fn Screen::__cpu__render_otree(const OCTTree::OctTree& otree, const DT3::Transform3& cam) -> void{
         f64 anglestep_v = 60.0 / this->vir_rez_h;
         f64 anglestep_h = 60.0 / this->vir_rez_w;
 

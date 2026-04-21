@@ -80,6 +80,39 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
     }
 }
 
+void OctTreeNode::optimize(){
+    for(auto & chd : this->children){
+        if (!chd.has_value()) continue;
+        chd.value()->optimize();
+    }
+    bool allfilled = true;
+    for (const auto& chd : this->children){
+        if (!chd.has_value()){
+            allfilled = false;
+            break;
+        }
+        allfilled = allfilled & chd.value()->fill.has_value();
+    }
+    if (!allfilled) return;
+    u32 colr = 0;u32 colg = 0;u32 colb = 0;u32 cola = 0;
+    for (const auto& chd : this->children){
+        const Color& clr = chd.value()->fill.value();
+        colr+=(u32)clr.r * (u32)clr.a;
+        colg+=(u32)clr.g * (u32)clr.a;
+        colb+=(u32)clr.b * (u32)clr.a;
+        cola = std::max(cola, (u32)clr.a);
+    }
+    colr /= 8; colg /= 8;colb /= 8;
+    colr /= 255; colg /= 255;colb /= 255;
+    this->fill = Color{(u8)colr,(u8)colg,(u8)colb,(u8)cola};
+    for(auto & chd : this -> children){
+        chd = {};
+    }
+}
+void OctTree::optimize(){
+    this->root->optimize();
+}
+
     u32 octree_size(const std::unique_ptr<OctTreeNode>& node){
         u32 amt = 1;
         for(const auto& nd : node->children){
@@ -95,13 +128,15 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
             const std::unique_ptr<OctTreeNode>& cnode
             ){
         nodes[cindex].size=cnode->size;
-        nodes[cindex].filled=cnode->fill.has_value();
+        nodes[cindex].filled_r=cnode->fill.has_value() ? cnode->fill.value().r : -1;
+        nodes[cindex].filled_g=cnode->fill.has_value() ? cnode->fill.value().g : -1;
+        nodes[cindex].filled_b=cnode->fill.has_value() ? cnode->fill.value().b : -1;
+        nodes[cindex].filled_a=cnode->fill.has_value() ? cnode->fill.value().a : -1;
         for(int i = 0; i < 8; i++){
-            if (!cnode->children[i].has_value()){
-                nodes[cindex].children[i]=-1;
-                continue;
-            }
+            nodes[cindex].children[i]=-1;
+            if (!cnode->children[i].has_value()) continue;
             avindex += 1;
+            nodes[cindex].children[i]=avindex;
             serialize_octree_nodes(nodes, avindex, avindex, cnode->children[i].value());
         }
     }
@@ -111,9 +146,15 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
         OctTreeNodeSer* nodes = (OctTreeNodeSer*)(RL_MALLOC(sizeof(OctTreeNodeSer)*full_size));
         u32 avindex = 0;
         serialize_octree_nodes(nodes, 0, avindex, otree.root);
+        OctTreeDataSer data = OctTreeDataSer{
+            Vector4{(f32)otree.position.x,(f32)otree.position.y,(f32)otree.position.z,0},
+            otree.size,
+            full_size
+        };
         OctTreeSer otreeser = OctTreeSer{
             otree.size,
             full_size,
+            data,
             nodes
         };
         return otreeser;
