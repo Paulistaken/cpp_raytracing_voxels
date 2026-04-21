@@ -31,7 +31,7 @@ typedef DTMat::Mat3 Mat3;
 void create_otree(OctTree& otree);
 void generate_sphere(OctTree& octree, const Vec3& center, f64 size, i32 voxelsize,const std::vector<Color>& fill);
 void render_camera_view(const OctTree& otree, const Transform3& cam);
-void insert_blocks(OctTree& otree, RenderShader& rnd, OctTree& otree_preview, const Transform3& cam, Color* build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
+void insert_blocks(OctTree& otree, RenderShader& rnd, OctTree& otree_preview, const Transform3& cam, const std::vector<Color>& build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
 
 int main(){
     InitWindow(600, 600, "ray");
@@ -42,7 +42,7 @@ int main(){
             "shaders/otree.glsl","shaders/reset_screen.glsl"
             );
 
-    Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
+    std::vector<Color> build_colors = {WHITE,RED,GREEN,BLUE,PURPLE, Color{255,255,255,100}, Color{255,0,0,100}, Color{0,255,0,100}, Color{0,0,255,100}};
     u32 select_build_color = 0;
     f64 build_size = 0.5;
     i32 build_vx_size = -3;
@@ -135,7 +135,7 @@ int main(){
         DrawText(TextFormat("yaw: %f, pitch: %f", cam.euler_angle.y, cam.euler_angle.x),0,16,16,YELLOW);
         DrawFPS(0, 48);
 
-        for (int i = 0; i < 5; i++){
+        for (int i = 0; i < build_colors.size(); i++){
             if (select_build_color == i) DrawRectangle(i*32, SCREEN_HEIGTH-32, 32, 32, BLACK);
             DrawRectangle(i*32+4, SCREEN_HEIGTH-32+4, 24, 24, build_colors[i]);
         }
@@ -155,8 +155,8 @@ int main(){
         show_map = IsKeyPressed(KEY_M) ? !show_map : show_map;
         show_preview = IsKeyPressed(KEY_P) ? !show_preview : show_preview;
 
-        select_build_color = (select_build_color + IsKeyPressed(KEY_O))%5;
-        select_build_color = (select_build_color + IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))%5;
+        select_build_color = (select_build_color + IsKeyPressed(KEY_O))%build_colors.size();
+        select_build_color = (select_build_color + IsMouseButtonPressed(MOUSE_BUTTON_RIGHT))%build_colors.size();
         build_size += (IsKeyPressed(KEY_L)-IsKeyPressed(KEY_K))*0.1;
         build_vx_size += IsKeyPressed(KEY_J)-IsKeyPressed(KEY_H);
 
@@ -169,6 +169,7 @@ void generate_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize
         for (f64 py = center.y - size;py <= center.y + size; py += step){
             for (f64 pz = center.z - size;pz <= center.z + size; pz += step){
                 if (Vec3(px,py,pz).dist(center)>size) continue;
+                if (Vec3(px,py,pz).dist(center)<size-step*2) continue;
                 u32 rsz = GetRandomValue(0, fill.size()-1);
                 otree.insert_node(fill[rsz], Vec3(px,py,pz), voxelsize);
             }
@@ -181,7 +182,7 @@ void insert_blocks(
         RenderShader& rnd,
         OctTree& otree_preview, 
         const Transform3& cam, 
-        Color* build_colors, 
+        const std::vector<Color>& build_colors, 
         u32 select_build_color, 
         f64 build_size, 
         i32 vx) {
