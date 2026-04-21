@@ -1,12 +1,12 @@
 Simple project for college.
 
-Renders voxel maps using voxels octrees.
+Renders voxel maps using voxel oct-trees.
 
-Rendering is done on gpu using shaders.
+Rendering is done on GPU using shaders.
 
 > [!IMPORTANT]
-> Reqiuries Raylib.6.0.0 compilled with OPENGL 4.3 compatibility
+> Requires Raylib.6.0.0 compiled with OPEN-GL 4.3 compatibility
 
-Raylib 6.0.0 compilled for linux included in raylib6 folder
+Raylib 6.0.0 compiled for linux included in raylib6 folder
 
 ![screenshot]("./screenshots/2026-04-21-155035_hyprshot.png") 
