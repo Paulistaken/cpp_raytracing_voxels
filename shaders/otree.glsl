@@ -18,6 +18,8 @@ struct ScreenData{
 
 struct OctTreeSer{
     vec4 pos;
+    vec4 orgin;
+    vec4 angle;
     int size;
 };
 struct OctTreeNodeSer {
@@ -52,8 +54,8 @@ struct RayResult{
 };
 
 bool point_in_area(vec3 point, vec3 bg, vec3 en){
-    if (point.x < bg.x || point.y < bg.y || point.z < bg.z) return false;
-    if (point.x > en.x || point.y > en.y || point.z > en.z) return false;
+    if (point.x <= bg.x || point.y <= bg.y || point.z <= bg.z) return false;
+    if (point.x >= en.x || point.y >= en.y || point.z >= en.z) return false;
     return true;
 }
 
@@ -72,21 +74,44 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     uint cur_b = 0;
     uint cur_a = 0;
 
-    vec3 ray_pos = pos-vec3(node_data.pos.x,node_data.pos.y,node_data.pos.z);
+    vec3 ray_pos = pos;
+
+    mat3x3 cpitch = mat3x3(1,0,0,0,cos(node_data.angle.x),sin(node_data.angle.x),0,-sin(node_data.angle.x),cos(node_data.angle.x));
+    mat3x3 cyaw = mat3x3(cos(-node_data.angle.y),0,-sin(-node_data.angle.y),0,1,0,sin(-node_data.angle.y),0,cos(-node_data.angle.y));
+    mat3x3 crot = cyaw * cpitch;
+
+    vec3 rpos1 = (crot * (ray_pos - node_data.pos.xyz - node_data.orgin.xyz)) + node_data.orgin.xyz;
+    vec3 rpos2 = (crot * (ray_pos + dir - node_data.pos.xyz - node_data.orgin.xyz)) + node_data.orgin.xyz;
+
+    ray_pos = rpos1;
+    dir = rpos2 - rpos1;
+
     float apsize = pow(2,nodes[0].size);
-    // if (ray_pos.x < 0 || ray_pos.x > apsize || ray_pos.y < 0 || ray_pos.y > apsize || ray_pos.z < 0 || ray_pos.z > apsize){
     if (!point_in_area(ray_pos,vec3(0,0,0),vec3(apsize,apsize,apsize))){
 
-        float bg = 0.01;
-        float en = apsize - 0.01;
+        float bg = 0.1;
+        float en = apsize - 0.1;
 
         float t = 1000000;
+        float pt=t;
         if (dir.x>0 && ray_pos.x < bg) t = min(t, (bg-ray_pos.x)/dir.x);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
         if (dir.x<0 && ray_pos.x > en) t = min(t, (en-ray_pos.x)/dir.x);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
         if (dir.y>0 && ray_pos.y < bg) t = min(t, (bg-ray_pos.y)/dir.y);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
         if (dir.z>0 && ray_pos.z < bg) t = min(t, (bg-ray_pos.z)/dir.z);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
         if (dir.y<0 && ray_pos.y > en) t = min(t, (en-ray_pos.y)/dir.y);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
         if (dir.z<0 && ray_pos.z > en) t = min(t, (en-ray_pos.z)/dir.z);
+        pt=t;
+        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
 
         dist += t;
         ray_pos += dir * t;
@@ -120,7 +145,7 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
             qu_indx -= 1;
             continue;
         }
-        if (ray_pos.x >= c_map_pos.x + psize || ray_pos.y >= c_map_pos.y + psize || ray_pos.z >= c_map_pos.z + psize){
+        if (ray_pos.x > c_map_pos.x + psize || ray_pos.y > c_map_pos.y + psize || ray_pos.z > c_map_pos.z + psize){
             qu_indx -= 1;
             continue;
         }

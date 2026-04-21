@@ -141,6 +141,8 @@ void OctTree::optimize(){
     OctTreeDataSer serialize_octree_data(const OctTree& otree){
         OctTreeDataSer data = OctTreeDataSer{
             Vector4{(f32)otree.position.x,(f32)otree.position.y,(f32)otree.position.z,0},
+            Vector4{(f32)otree.orgin.x,(f32)otree.orgin.y,(f32)otree.orgin.z,0},
+            Vector4{(f32)otree.angle.x,(f32)otree.angle.y,(f32)otree.angle.z,0},
             otree.size,
         };
         return data;
@@ -152,10 +154,7 @@ void OctTree::optimize(){
         OctTreeNodeSer* nodes = (OctTreeNodeSer*)(RL_MALLOC(sizeof(OctTreeNodeSer)*full_size));
         u32 avindex = 0;
         serialize_octree_nodes(nodes, 0, avindex, otree.root);
-        OctTreeDataSer data = OctTreeDataSer{
-            Vector4{(f32)otree.position.x,(f32)otree.position.y,(f32)otree.position.z,0},
-            otree.size,
-        };
+        OctTreeDataSer data = serialize_octree_data(otree);
         OctTreeSer otreeser = OctTreeSer{
             otree.size,
             full_size,

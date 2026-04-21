@@ -56,6 +56,7 @@ int main(){
     generate_sphere(otree2, Vec3(10,10,10), 5, -2, {WHITE});
     otree.optimize();
     otree2.optimize();
+    otree2.orgin = Vec3(10,10,10);
 
     SetTargetFPS(60);
 
@@ -78,7 +79,7 @@ int main(){
         rnd.update_tree_buffer_data(0, otree);
         rnd.update_tree_buffer_data(1, otree2);
 
-        otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,15);
+        otree2.angle = Vec3(0,o2yaw,0);
         o2yaw += 0.1;
         ClearBackground(Color{20,125,200,255});
 

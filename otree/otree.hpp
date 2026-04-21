@@ -21,6 +21,8 @@ namespace OCTTree{
     class OctTree{
         public:
         Vec3 position;
+        Vec3 orgin;
+        Vec3 angle;
         i32 size;
         std::unique_ptr<OctTreeNode> root;
         OctTree(i32 size);
@@ -42,6 +44,8 @@ namespace OCTTree{
     } OctTreeNodeSer;
     typedef struct {
         Vector4 pos;
+        Vector4 orgin;
+        Vector4 angle;
         i32 size;
     } OctTreeDataSer;
     typedef struct {
