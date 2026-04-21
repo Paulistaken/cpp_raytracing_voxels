@@ -1,0 +1,209 @@
+#version 430
+
+layout (local_size_x = 20, local_size_y = 20, local_size_z = 1) in;
+
+const int VREZ = 200;
+const float FOV = 60;
+
+struct PixelData{
+    float deph;
+    uint r;
+    uint g;
+    uint b;
+    uint a;
+};
+struct ScreenData{
+    PixelData pixels[VREZ][VREZ];
+};
+
+struct OctTreeSer{
+    vec4 pos;
+    int size;
+};
+struct OctTreeNodeSer {
+    int size;
+    int filled_r;
+    int filled_g;
+    int filled_b;
+    int filled_a;
+    int kids[8];
+};
+
+struct CameraData{
+    vec4 orgin;
+    vec4 angle;
+};
+
+
+layout(std430, binding=0) buffer ssbo0 { ScreenData screen_data; };
+layout(std430, binding=1) buffer ssbo1 { OctTreeNodeSer nodes[]; };
+layout(std430, binding=2) buffer ssbo2 { OctTreeSer node_data; };
+
+layout(std430, binding=3) buffer ssbo3 { CameraData cam; };
+
+
+struct RayResult{
+    bool hit;
+    uint r;
+    uint g;
+    uint b;
+    uint a;
+    float dist;
+};
+
+bool point_in_area(vec3 point, vec3 bg, vec3 en){
+    if (point.x < bg.x || point.y < bg.y || point.z < bg.z) return false;
+    if (point.x > en.x || point.y > en.y || point.z > en.z) return false;
+    return true;
+}
+
+RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
+    float dist = 0;
+    int qu_indx = 0;
+    int qu_node[32];
+    vec3 qu_pos[32];
+
+    qu_node[qu_indx] = 0;
+    qu_pos[qu_indx] = vec3(0,0,0);
+
+    uint cur_n = 0;
+    uint cur_r = 0;
+    uint cur_g = 0;
+    uint cur_b = 0;
+    uint cur_a = 0;
+
+    vec3 ray_pos = pos-vec3(node_data.pos.x,node_data.pos.y,node_data.pos.z);
+    float apsize = pow(2,nodes[0].size);
+    // if (ray_pos.x < 0 || ray_pos.x > apsize || ray_pos.y < 0 || ray_pos.y > apsize || ray_pos.z < 0 || ray_pos.z > apsize){
+    if (!point_in_area(ray_pos,vec3(0,0,0),vec3(apsize,apsize,apsize))){
+
+        float bg = 0.01;
+        float en = apsize - 0.01;
+
+        float t = 1000000;
+        if (dir.x>0 && ray_pos.x < bg) t = min(t, (bg-ray_pos.x)/dir.x);
+        if (dir.x<0 && ray_pos.x > en) t = min(t, (en-ray_pos.x)/dir.x);
+        if (dir.y>0 && ray_pos.y < bg) t = min(t, (bg-ray_pos.y)/dir.y);
+        if (dir.z>0 && ray_pos.z < bg) t = min(t, (bg-ray_pos.z)/dir.z);
+        if (dir.y<0 && ray_pos.y > en) t = min(t, (en-ray_pos.y)/dir.y);
+        if (dir.z<0 && ray_pos.z > en) t = min(t, (en-ray_pos.z)/dir.z);
+
+        dist += t;
+        ray_pos += dir * t;
+    }
+
+    while(true){
+        if (dist >= maxdist){
+            break;
+        }
+
+        if (qu_indx < 0) break;
+
+        int c_indx = qu_node[qu_indx];
+        vec3 c_map_pos = qu_pos[qu_indx];
+
+
+        if (nodes[c_indx].filled_r >= 0){
+            cur_n += 1;
+            cur_r = min( (cur_r * cur_a + nodes[c_indx].filled_r * nodes[c_indx].filled_a ) / 255,255);
+            cur_g = min( (cur_g * cur_a + nodes[c_indx].filled_g * nodes[c_indx].filled_a ) / 255,255);
+            cur_b = min( (cur_b * cur_a + nodes[c_indx].filled_b * nodes[c_indx].filled_a ) / 255,255);
+            cur_a = max(cur_a,nodes[c_indx].filled_a);
+            if (cur_a >= 255){
+                return RayResult(true, cur_r, cur_g, cur_b, cur_a,dist);
+            }
+        }
+
+        float psize = pow(2.0, float(nodes[c_indx].size));
+
+        if (ray_pos.x < c_map_pos.x || ray_pos.y < c_map_pos.y || ray_pos.z < c_map_pos.z){
+            qu_indx -= 1;
+            continue;
+        }
+        if (ray_pos.x >= c_map_pos.x + psize || ray_pos.y >= c_map_pos.y + psize || ray_pos.z >= c_map_pos.z + psize){
+            qu_indx -= 1;
+            continue;
+        }
+
+        uint ptx = ray_pos.x < c_map_pos.x + (psize / 2) ? 0 : 1;
+        uint pty = ray_pos.y < c_map_pos.y + (psize / 2) ? 0 : 1;
+        uint ptz = ray_pos.z < c_map_pos.z + (psize / 2) ? 0 : 1;
+        uint id = ptx + pty * 2 + ptz * 4;
+
+        if (nodes[c_indx].kids[id]>0) {
+            qu_indx += 1;
+            vec3 npos = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);
+            qu_node[qu_indx] = nodes[c_indx].kids[id];
+            qu_pos[qu_indx]=npos;
+            continue;
+        }else{
+            vec3 area_bg = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);
+            vec3 area_en = area_bg + vec3(psize/2,psize/2,psize/2);
+
+            area_bg -= vec3(0.0001,0.0001,0.0001);
+            area_en += vec3(0.0001,0.0001,0.0001);
+            float t = 1000000;
+
+            if (dir.x>0 && ray_pos.x < area_en.x) t = min(t, (area_en.x-ray_pos.x)/dir.x);
+            if (dir.y>0 && ray_pos.y < area_en.y) t = min(t, (area_en.y-ray_pos.y)/dir.y);
+            if (dir.z>0 && ray_pos.z < area_en.z) t = min(t, (area_en.z-ray_pos.z)/dir.z);
+
+            if (dir.x<0 && area_bg.x < ray_pos.x) t = min(t, (area_bg.x-ray_pos.x)/dir.x);
+            if (dir.y<0 && area_bg.y < ray_pos.y) t = min(t, (area_bg.y-ray_pos.y)/dir.y);
+            if (dir.z<0 && area_bg.z < ray_pos.z) t = min(t, (area_bg.z-ray_pos.z)/dir.z);
+
+            dist += t;
+            ray_pos += dir * t;
+        }
+
+    }
+    if (cur_n != 0){
+        return RayResult(true, cur_r, cur_g, cur_b, cur_a,dist);
+    }
+    return RayResult(false, 0, 0, 0, 0, 0);
+}
+
+const float PI = 3.14159265359;
+
+void main(){
+    uint ix = gl_GlobalInvocationID.x;
+    uint iy = gl_GlobalInvocationID.y;
+
+    float angstep = FOV / float(VREZ);
+    
+    float angv = (angstep * float(iy) - (FOV/2)) / 180 * PI;
+    float angh = (angstep * float(ix) - (FOV/2)) / 180 * PI;
+    
+    mat3x3 lpitch = mat3x3(1,0,0,0,cos(angv),sin(angv),0,-sin(angv),cos(angv));
+    mat3x3 lyaw = mat3x3(cos(angh),0,-sin(angh),0,1,0,sin(angh),0,cos(angh));
+
+    mat3x3 cpitch = mat3x3(1,0,0,0,cos(cam.angle.x),sin(cam.angle.x),0,-sin(cam.angle.x),cos(cam.angle.x));
+    mat3x3 cyaw = mat3x3(cos(cam.angle.y),0,-sin(cam.angle.y),0,1,0,sin(cam.angle.y),0,cos(cam.angle.y));
+
+    vec3 dir = vec3(0,0,1);
+    dir = lpitch * lyaw * dir;
+
+    dir = cyaw * cpitch * dir;
+
+    vec3 pos = vec3(cam.orgin.x,cam.orgin.y,cam.orgin.z);
+    float maxdist = screen_data.pixels[iy][ix].deph >= 0 ? screen_data.pixels[iy][ix].deph : 500;
+
+    RayResult rayhit = do_ray_tracing(pos,dir,maxdist);
+    
+    if (!rayhit.hit) return;
+
+    if (rayhit.a >= 255){
+        screen_data.pixels[iy][ix].r = rayhit.r;
+        screen_data.pixels[iy][ix].g = rayhit.g;
+        screen_data.pixels[iy][ix].b = rayhit.b;
+        screen_data.pixels[iy][ix].a = rayhit.a;
+        screen_data.pixels[iy][ix].deph = rayhit.dist;
+        return;
+    }
+    screen_data.pixels[iy][ix].r = min( (screen_data.pixels[iy][ix].r * screen_data.pixels[iy][ix].a + rayhit.r * rayhit.a ) / 255, 255);
+    screen_data.pixels[iy][ix].g = min( (screen_data.pixels[iy][ix].g * screen_data.pixels[iy][ix].a + rayhit.g * rayhit.a ) / 255, 255);
+    screen_data.pixels[iy][ix].b = min( (screen_data.pixels[iy][ix].b * screen_data.pixels[iy][ix].a + rayhit.b * rayhit.a ) / 255, 255);
+    screen_data.pixels[iy][ix].a = max(screen_data.pixels[iy][ix].a,rayhit.a);
+
+
+}

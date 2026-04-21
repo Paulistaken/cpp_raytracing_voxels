@@ -1,12 +1,10 @@
 
 #include "otree.hpp"
-#include "dtypes.hpp"
+#include "../dtypes.hpp"
 #include <cmath>
 #include <memory>
 #include <optional>
 #include <raylib.h>
-#include <stack>
-#include <tuple>
 
 namespace OCTTree{
 
@@ -140,6 +138,14 @@ void OctTree::optimize(){
             serialize_octree_nodes(nodes, avindex, avindex, cnode->children[i].value());
         }
     }
+    OctTreeDataSer serialize_octree_data(const OctTree& otree){
+        OctTreeDataSer data = OctTreeDataSer{
+            Vector4{(f32)otree.position.x,(f32)otree.position.y,(f32)otree.position.z,0},
+            otree.size,
+        };
+        return data;
+
+    }
     // Malloc wymagany to interfejsowania z kartą graficzną
     OctTreeSer serialize_octtree(const OctTree& otree){
         u32 full_size = octree_size(otree.root);
@@ -149,7 +155,6 @@ void OctTree::optimize(){
         OctTreeDataSer data = OctTreeDataSer{
             Vector4{(f32)otree.position.x,(f32)otree.position.y,(f32)otree.position.z,0},
             otree.size,
-            full_size
         };
         OctTreeSer otreeser = OctTreeSer{
             otree.size,

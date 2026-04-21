@@ -3,7 +3,7 @@
 #include <raylib.h>
 #include <memory>
 #include <optional>
-#include "dtypes.hpp"
+#include "../dtypes.hpp"
 
 
 namespace OCTTree{
@@ -43,7 +43,6 @@ namespace OCTTree{
     typedef struct {
         Vector4 pos;
         i32 size;
-        u32 len;
     } OctTreeDataSer;
     typedef struct {
         i32 size;
@@ -52,6 +51,7 @@ namespace OCTTree{
         OctTreeNodeSer* nodes;
     } OctTreeSer;
 
+    OctTreeDataSer serialize_octree_data(const OctTree& otree);
     OctTreeSer serialize_octtree(const OctTree& octtree);
 
 }

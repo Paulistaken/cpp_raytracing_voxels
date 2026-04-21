@@ -8,8 +8,8 @@
 #include "vox_render.hpp"
 
 #include "dtypes.hpp"
-#include "otree.hpp"
-#include "otree_ray.hpp"
+#include "otree/otree.hpp"
+#include "otree/otree_ray.hpp"
 #include <optional>
 #include <utility>
 #include <vector>
@@ -17,7 +17,7 @@
 
 const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = 600;
-const u32 VIR_REZ = 200;
+const u32 VIR_REZ = VREZ;
 
 const f64 MOVESPEED = 0.5;
 const f64 ROTSPEED = 0.1;
@@ -39,7 +39,7 @@ int main(){
     Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
 
     RenderShader rnd = RenderShader(
-            "otree.glsl"
+            "shaders/otree.glsl","shaders/reset_screen.glsl"
             );
 
     Color build_colors[5] = {WHITE,RED,GREEN,BLUE,PURPLE};
@@ -71,9 +71,12 @@ int main(){
     rnd.add_tree_buffer(otree2);
     rnd.add_tree_buffer(otree_preview);
 
+    rnd.load_screen(screen);
+
     while(!WindowShouldClose()){
 
-        rnd.update_tree_buffer(1, otree2);
+        rnd.update_tree_buffer_data(0, otree);
+        rnd.update_tree_buffer_data(1, otree2);
 
         otree2.position = DTMat::from_euler_angles(Vec3(0.0,o2yaw,0.0))*Vec3(0,0,15);
         o2yaw += 0.1;
@@ -88,14 +91,17 @@ int main(){
 
         BeginDrawing();
 
-        screen.cpu_reset_scr(Color{20,125,200,255});
 
-        rnd.run_raytracing(screen, 0, cam.pos, cam.euler_angle);
-        rnd.run_raytracing(screen, 1, cam.pos, cam.euler_angle);
-        if (show_preview) rnd.run_raytracing(screen, 2, cam.pos, cam.euler_angle);
+        rnd.reset_screen(Color{20,125,200,255});
+
+        rnd.run_raytracing(0, cam.pos, cam.euler_angle);
+        rnd.run_raytracing(1, cam.pos, cam.euler_angle);
+        if (show_preview) rnd.run_raytracing(2, cam.pos, cam.euler_angle);
         if (show_preview) insert_blocks(otree, rnd, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
 
-        screen.cpu_render_scr();
+        rnd.render_screen(screen);
+
+        screen.__cpu__render_scr();
 
         Vec3 move_axis = Vec3(IsKeyDown(KEY_D)-IsKeyDown(KEY_A),-IsKeyDown(KEY_LEFT_SHIFT)+IsKeyDown(KEY_SPACE),IsKeyDown(KEY_W)-IsKeyDown(KEY_S))*MOVESPEED* (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         Vec3 move_dir = DTMat::from_euler_angles(Vec3(0,cam.euler_angle.y,0))*move_axis;
@@ -108,7 +114,7 @@ int main(){
         cam.pos += mov_velocity;
 
         if (show_map) {
-            auto avl = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).send_ray(otree, {});
+            auto avl = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).cpu_send_ray(otree, {});
             for(i32 x = 0; x < 60; x++){
                 for(i32 y = 0; y < 60; y++){
                     if (!otree.is_pos_filled(Vec3(x,cam.pos.y,y))) continue;
@@ -179,7 +185,7 @@ void insert_blocks(
         f64 build_size, 
         i32 vx) {
     Vec3 cam_forward = cam.get_forward();
-    auto forward_ray = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).send_ray(otree, {});
+    auto forward_ray = OCTTree::OCTRay::OCTRay(cam.pos,cam.get_forward()).cpu_send_ray(otree, {});
     Vec3 insert_pos;
     if (forward_ray.has_value()){
         auto [ray_pos,ray_v] = forward_ray.value();

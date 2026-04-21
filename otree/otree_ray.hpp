@@ -21,7 +21,7 @@ class OCTRay{
     Vec3 orgin;
     Vec3 direction;
     OCTRay(const Vec3&, const Vec3&);
-    fn send_ray(const OctTree&, const std::optional<OCTRayOptions>&) const -> std::optional<RayResult>;
+    fn cpu_send_ray(const OctTree&, const std::optional<OCTRayOptions>&) const -> std::optional<RayResult>;
 };
 
 }

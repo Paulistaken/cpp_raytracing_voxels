@@ -1,6 +1,6 @@
 #include "vox_render.hpp"
-#include "otree.hpp"
-#include "otree_ray.hpp"
+#include "otree/otree.hpp"
+#include "otree/otree_ray.hpp"
 #include <algorithm>
 #include <iostream>
 #include <raylib.h>
@@ -51,7 +51,7 @@ namespace Vox_Rend {
         this->vir_rez_h = vrez_v;
         this->pixels = std::vector(vrez_v,std::vector(vrez,PixelData()));
     }
-    fn Screen::cpu_reset_scr(Color bcol) -> void{
+    fn Screen::__cpu__reset_scr(Color bcol) -> void{
         for (auto& prow : this->pixels){
             for(auto & px : prow){
                 px.col = bcol;
@@ -65,7 +65,7 @@ namespace Vox_Rend {
         if (deph > pixel.deph) return;
         pixel = col.a==255 ? PixelData(col,deph) : PixelData(mix_colors_a(pixel.col,col),pixel.deph);
     }
-    fn Screen::cpu_render_scr() const -> void {
+    fn Screen::__cpu__render_scr() const -> void {
         for (int y = 0; y < this->vir_rez_h; y++){
             for(int x = 0; x < this->vir_rez_w; x++){
                 auto& pixel = this->pixels[y][x];
@@ -105,7 +105,7 @@ namespace Vox_Rend {
                 DTMat::Vec3 dir = rot * cam_dir;
 
                 OCTTree::OCTRay::OCTRay ray = OCTTree::OCTRay::OCTRay(cam.pos,dir);
-                auto vl = ray.send_ray(otree, opts);
+                auto vl = ray.cpu_send_ray(otree, opts);
                 if (vl.has_value()){
                     auto [vpos, vcol] = vl.value();
                     f64 cam_dist = vpos.dist(cam.pos);

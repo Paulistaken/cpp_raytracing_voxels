@@ -1,6 +1,6 @@
 #include "dtypes.hpp"
 #include <vector>
-#include "otree.hpp"
+#include "otree/otree.hpp"
 #include "raylib.h"
 
 #ifndef VOXRENDER_H
@@ -28,10 +28,10 @@ namespace Vox_Rend{
         std::vector<std::vector<PixelData>> pixels;
         Screen(u32 SCREEN_WIDTH,u32 SCREEN_HEIGTH,u32 VIR_REZ_WIDTH);
         fn update_rez(u32 SCREEN_WIDTH, u32 SCREEN_HEIGTH, u32 VIR_REZ_WIDTH) -> void;
-        fn cpu_reset_scr(Color background_col) -> void;
+        fn __cpu__reset_scr(Color background_col) -> void;
         fn set_pixel(u32 x, u32 y,Color col, f64 deph) -> void;
         fn get_pixel(u32 x, u32 y) const -> std::optional<PixelData>;
-        fn cpu_render_scr() const -> void;
+        fn __cpu__render_scr() const -> void;
 
         fn __cpu__render_otree(const OCTTree::OctTree& otree, const DT3::Transform3& cam)->void;
 
