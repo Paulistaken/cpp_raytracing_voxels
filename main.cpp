@@ -17,7 +17,7 @@
 
 const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = 600;
-const u32 VIR_REZ = 60;
+const u32 VIR_REZ = 200;
 
 const f64 MOVESPEED = 0.5;
 const f64 ROTSPEED = 0.1;

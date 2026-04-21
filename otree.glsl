@@ -1,6 +1,8 @@
 #version 430
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
+const int VREZ = 200;
+
 struct PixelData{
     float deph;
     uint r;
@@ -9,7 +11,7 @@ struct PixelData{
     uint a;
 };
 struct ScreenData{
-    PixelData pixels[60][60];
+    PixelData pixels[VREZ][VREZ];
 };
 
 struct OctTreeSer{
@@ -185,9 +187,13 @@ const float PI = 3.14159265359;
 void main(){
     uint ix = gl_GlobalInvocationID.x;
     uint iy = gl_GlobalInvocationID.y;
+
+    float angstep = 60.0 / float(VREZ);
     
-    float angv = (float(iy) - 30) / 180 * PI;
-    float angh = (float(ix) - 30) / 180 * PI;
+    float angv = (angstep * float(iy) - 30) / 180 * PI;
+    float angh = (angstep * float(ix) - 30) / 180 * PI;
+    // float angv = (float(iy) - VREZ/2) / 180 * PI;
+    // float angh = (float(ix) - VREZ/2) / 180 * PI;
     
     mat3x3 lpitch = mat3x3(1,0,0,0,cos(angv),sin(angv),0,-sin(angv),cos(angv));
     mat3x3 lyaw = mat3x3(cos(angh),0,-sin(angh),0,1,0,sin(angh),0,cos(angh));

@@ -21,8 +21,9 @@ typedef struct{
     u32 a;
 } PixelData;
 
+const i32 VREZ = 200;
 typedef struct{
-    PixelData pixels[60][60];
+    PixelData pixels[VREZ][VREZ];
 } ScreenData;
 
 typedef struct{
@@ -31,8 +32,8 @@ typedef struct{
 } CamData;
 
 void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
-    for(int y = 0; y < 60; y++){
-        for(int x = 0; x < 60; x++){
+    for(int y = 0; y < VREZ; y++){
+        for(int x = 0; x < VREZ; x++){
             auto& pxl = scr.pixels[y][x];
             const auto& pixel = shader_scr.pixels[y][x];
             pxl.deph = pixel.deph;
@@ -45,8 +46,8 @@ void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
 }
 ScreenData get_screen_data_ser(const Vox_Rend::Screen& scr){
     ScreenData shader_scr;
-    for(int y = 0; y < 60; y++){
-        for(int x = 0; x < 60; x++){
+    for(int y = 0; y < VREZ; y++){
+        for(int x = 0; x < VREZ; x++){
             const auto& pixel = scr.pixels[y][x];
             auto& pxl = shader_scr.pixels[y][x];
             pxl.deph = pixel.deph;
@@ -139,7 +140,7 @@ void RenderShader::run_raytracing(
     rlBindShaderBuffer(c_ssbo_nodeN, 2);
     rlBindShaderBuffer(this->ssbo_cam, 3);
 
-    rlComputeShaderDispatch(60, 60, 1);
+    rlComputeShaderDispatch(VREZ, VREZ, 1);
 
     rlReadShaderBuffer(this->ssbo_screen_data, &shader_scr, sizeof(ScreenData), 0);
     rlReadShaderBuffer(this->ssbo_screen_data, &shader_scr, sizeof(ScreenData), 0);
