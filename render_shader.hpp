@@ -20,7 +20,8 @@ class RenderShader{
     public:
     RenderShader(
             const char* otree_shader,
-            const char* reset_shader);
+            const char* reset_shader,
+            const char* light_shader);
 
     u32 add_tree_buffer(
             const OCTTree::OctTree& otree);
@@ -31,6 +32,7 @@ class RenderShader{
             const u32 index,
             const OCTTree::OctTree& otree);
     void load_camera(const DT3::Vec3 orgin, const DT3::Vec3 dir);
+    void run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str);
     void load_screen(
            const Vox_Rend::Screen& scr
             );
@@ -47,6 +49,8 @@ class RenderShader{
     int otree_shader_p;
     int rst_shader;
     int rst_shader_p;
+    int lt_shader;
+    int lt_shader_p;
     int ssbo_screen_data;
     std::vector<std::tuple<int,int>> ssbo_nodes;
     int ssbo_cam;

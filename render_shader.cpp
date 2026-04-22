@@ -15,6 +15,10 @@ typedef struct{
     Vector4 orgin;
     Vector4 angle;
 } CamData;
+typedef struct{
+    Vector4 orgin;
+    f32 str;
+} LightData;
 
 void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
     for(int y = 0; y < VREZ; y++){
@@ -44,15 +48,19 @@ ScreenData get_screen_data_ser(const Vox_Rend::Screen& scr){
     }
     return shader_scr;
 }
-RenderShader::RenderShader(const char* os, const char* rs){
+RenderShader::RenderShader(const char* os, const char* rs, const char* ls){
     char* shader_code = LoadFileText(os);
     char* r_shader_code = LoadFileText(rs);
+    char* l_shader_code = LoadFileText(ls);
     this->otree_shader = rlLoadShader(shader_code, RL_COMPUTE_SHADER);
     this->otree_shader_p = rlLoadShaderProgramCompute(this->otree_shader);
     this->rst_shader = rlLoadShader(r_shader_code, RL_COMPUTE_SHADER);
     this->rst_shader_p = rlLoadShaderProgramCompute(this->rst_shader);
+    this->lt_shader = rlLoadShader(l_shader_code, RL_COMPUTE_SHADER);
+    this->lt_shader_p = rlLoadShaderProgramCompute(this->lt_shader);
     UnloadFileText(shader_code);
     UnloadFileText(r_shader_code);
+    UnloadFileText(l_shader_code);
     this->ssbo_screen_data = -1;
     this->ssbo_cam = -1;
 }
@@ -97,6 +105,27 @@ void RenderShader::load_camera(
     Vector4 dir_ser = Vector4{(f32)dir.x, (f32)dir.y,(f32)dir.z,0.0};
     CamData cam_data = CamData{orgin_ser,dir_ser};
     this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_COPY);
+}
+void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str){
+    Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
+    LightData light_data = LightData{orgin_ser,light_str};
+    i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_COPY);
+
+
+    auto [c_ssbo_nodes, c_ssbo_nodeN] = this->ssbo_nodes[index];
+
+
+    rlEnableShader(this->lt_shader_p);
+
+    rlBindShaderBuffer(c_ssbo_nodes, 0);
+    rlBindShaderBuffer(c_ssbo_nodeN, 1);
+    rlBindShaderBuffer(ssbo0_light, 2);
+
+    rlComputeShaderDispatch(720/20, 720/20, 1);
+
+    rlDisableShader();
+    
+    rlUnloadShaderBuffer(ssbo0_light);
 }
 void RenderShader::load_screen(
         const Vox_Rend::Screen& scr
