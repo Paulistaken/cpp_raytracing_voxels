@@ -6,7 +6,7 @@
 
 namespace OCTTree::OCTRay{
 
-typedef std::tuple<Vec3, Color> RayResult;
+typedef std::tuple<Vec3, Vec3, Color> RayResult;
 
 class OCTRayOptions{
     public:

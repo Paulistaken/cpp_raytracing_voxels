@@ -107,7 +107,7 @@ namespace Vox_Rend {
                 OCTTree::OCTRay::OCTRay ray = OCTTree::OCTRay::OCTRay(cam.pos,dir);
                 auto vl = ray.cpu_send_ray(otree, opts);
                 if (vl.has_value()){
-                    auto [vpos, vcol] = vl.value();
+                    auto [vpos,map_pos, vcol] = vl.value();
                     f64 cam_dist = vpos.dist(cam.pos);
                     f64 dst = 1.0/std::max(cam_dist/10.0,1.0);
                     vcol = color_darken(vcol,255- dst * 255);

@@ -51,6 +51,41 @@ std::optional<Color> OctTree::is_pos_filled(const Vec3& position) const{
     return {};
 }
 
+void OctTree::OctTree::remove_node(const Vec3& position, const i32& size){
+    OctTree& tree = *this;
+    Vec3 c_pos = Vec3(0,0,0); 
+    OTNcpointer c_node = &tree.root;
+    f64 psize = std::pow(2,c_node->get()->size);
+    if (position.x > psize || position.y > psize || position.z > psize) return;
+    while(true){
+        psize = std::pow(2.0,(f64)c_node->get()->size);
+        if (
+                c_node->get()->size <= size
+           ){
+            c_node->get()->fill={};
+            for (auto& kd : c_node->get()->children){
+                kd={};
+            }
+            break;
+        }
+        if (c_node->get()->fill.has_value()){
+            for (auto& kd : c_node->get()->children){
+                kd.emplace(new OctTreeNode(c_node->get()->fill,c_node->get()->size-1));
+            }
+            c_node->get()->fill={};
+        }
+        bool ptx = !(position.x < c_pos.x + (psize / 2));
+        bool pty = !(position.y < c_pos.y + (psize / 2));
+        bool ptz = !(position.z < c_pos.z + (psize / 2));
+        u32 id = ptx + pty*2 + ptz*4;
+        c_pos += Vec3(ptx,pty,ptz) * (psize/2);
+        if (!c_node->get()->children[id].has_value()){
+            break;
+        }
+        c_node = &c_node->get()->children[id].value();
+        continue;
+    }
+}
 void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, const i32& size){
     OctTree& tree = *this;
     Vec3 c_pos = Vec3(0,0,0); 
@@ -78,20 +113,25 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
     }
 }
 
-void OctTreeNode::optimize(){
+bool OctTreeNode::optimize(){
     for(auto & chd : this->children){
         if (!chd.has_value()) continue;
-        chd.value()->optimize();
+        if (!chd.value()->optimize()){
+            chd = {};
+        }
     }
     bool allfilled = true;
+    bool allempty = !this->fill.has_value();
     for (const auto& chd : this->children){
         if (!chd.has_value()){
             allfilled = false;
-            break;
+            continue;
         }
+        allempty = false;
         allfilled = allfilled & chd.value()->fill.has_value();
     }
-    if (!allfilled) return;
+    if (allempty) return false;
+    if (!allfilled) return true;
     u32 colr = 0;u32 colg = 0;u32 colb = 0;u32 cola = 0;
     for (const auto& chd : this->children){
         const Color& clr = chd.value()->fill.value();
@@ -106,6 +146,7 @@ void OctTreeNode::optimize(){
     for(auto & chd : this -> children){
         chd = {};
     }
+    return true;
 }
 void OctTree::optimize(){
     this->root->optimize();
@@ -130,6 +171,7 @@ void OctTree::optimize(){
         nodes[cindex].filled_g=cnode->fill.has_value() ? cnode->fill.value().g : -1;
         nodes[cindex].filled_b=cnode->fill.has_value() ? cnode->fill.value().b : -1;
         nodes[cindex].filled_a=cnode->fill.has_value() ? cnode->fill.value().a : -1;
+        nodes[cindex].light = 0;
         for(int i = 0; i < 8; i++){
             nodes[cindex].children[i]=-1;
             if (!cnode->children[i].has_value()) continue;

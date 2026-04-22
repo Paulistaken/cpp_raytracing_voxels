@@ -13,23 +13,8 @@
 #define RENDERSHADER
 
 
-typedef struct{
-    float deph;
-    u32 r;
-    u32 g;
-    u32 b;
-    u32 a;
-} PixelData;
 
 const i32 VREZ = 200;
-typedef struct{
-    PixelData pixels[VREZ][VREZ];
-} ScreenData;
-
-typedef struct{
-    Vector4 orgin;
-    Vector4 angle;
-} CamData;
 
 class RenderShader{
     public:
@@ -45,6 +30,7 @@ class RenderShader{
     void update_tree_buffer_data(
             const u32 index,
             const OCTTree::OctTree& otree);
+    void load_camera(const DT3::Vec3 orgin, const DT3::Vec3 dir);
     void load_screen(
            const Vox_Rend::Screen& scr
             );
@@ -53,9 +39,7 @@ class RenderShader{
             Vox_Rend::Screen& scr
             );
     void run_raytracing(
-            const u32 index,
-            const DT3::Vec3 orgin,
-            const DT3::Vec3 dir
+            const u32 index
             );
 
     private:

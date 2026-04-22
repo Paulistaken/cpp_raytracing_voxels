@@ -1,5 +1,21 @@
 #include "render_shader.hpp"
 
+typedef struct{
+    float deph;
+    u32 r;
+    u32 g;
+    u32 b;
+    u32 a;
+} PixelData;
+typedef struct{
+    PixelData pixels[VREZ][VREZ];
+} ScreenData;
+
+typedef struct{
+    Vector4 orgin;
+    Vector4 angle;
+} CamData;
+
 void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
     for(int y = 0; y < VREZ; y++){
         for(int x = 0; x < VREZ; x++){
@@ -37,9 +53,8 @@ RenderShader::RenderShader(const char* os, const char* rs){
     this->rst_shader_p = rlLoadShaderProgramCompute(this->rst_shader);
     UnloadFileText(shader_code);
     UnloadFileText(r_shader_code);
-    // this->text = LoadTextureFromImage(LoadImage("white.png"));
-
     this->ssbo_screen_data = -1;
+    this->ssbo_cam = -1;
 }
 u32 RenderShader::add_tree_buffer(
         const OCTTree::OctTree& otree
@@ -71,6 +86,17 @@ void RenderShader::update_tree_buffer(
     nodes = rlLoadShaderBuffer(sizeof(OCTTree::OctTreeNodeSer) * otreeser.lengh, otreeser.nodes, RL_DYNAMIC_COPY);
     nodeN = rlLoadShaderBuffer(sizeof(otreeser.data), &otreeser.data, RL_DYNAMIC_COPY);
     free(otreeser.nodes);
+}
+void RenderShader::load_camera(
+        const DT3::Vec3 orgin, const DT3::Vec3 dir
+        ){
+    if (this->ssbo_cam != -1){
+        rlUnloadShaderBuffer(this->ssbo_cam);
+    }
+    Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
+    Vector4 dir_ser = Vector4{(f32)dir.x, (f32)dir.y,(f32)dir.z,0.0};
+    CamData cam_data = CamData{orgin_ser,dir_ser};
+    this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_COPY);
 }
 void RenderShader::load_screen(
         const Vox_Rend::Screen& scr
@@ -105,15 +131,9 @@ void RenderShader::reset_screen(Color rst_clr){
 }
 
 void RenderShader::run_raytracing(
-        const u32 index,
-        const DT3::Vec3 orgin,
-        const DT3::Vec3 dir
+        const u32 index
         ){
     auto [c_ssbo_nodes, c_ssbo_nodeN] = this->ssbo_nodes[index];
-    Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
-    Vector4 dir_ser = Vector4{(f32)dir.x, (f32)dir.y,(f32)dir.z,0.0};
-    CamData cam_data = CamData{orgin_ser,dir_ser};
-    this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_COPY);
 
 
     rlEnableShader(this->otree_shader_p);
@@ -126,7 +146,4 @@ void RenderShader::run_raytracing(
     rlComputeShaderDispatch(VREZ/20, VREZ/20, 1);
 
     rlDisableShader();
-
-    rlUnloadShaderBuffer(this->ssbo_cam);
-
 }

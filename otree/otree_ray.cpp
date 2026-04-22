@@ -66,7 +66,7 @@ namespace OCTTree::OCTRay {
             auto [c_node,map_pos] = qu.top();
             if (c_node->get()->fill.has_value()){ 
                 Color clr = c_node->get()->fill.value();
-                std::tuple<Vec3,Color> rt = {ray_pos,clr}; 
+                RayResult rt = {ray_pos,map_pos,clr}; 
                 return rt;
             }
             f64 psize = std::pow(2,c_node->get()->size);
