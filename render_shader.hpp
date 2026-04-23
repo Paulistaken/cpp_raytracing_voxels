@@ -21,7 +21,8 @@ class RenderShader{
     RenderShader(
             const char* otree_shader,
             const char* reset_shader,
-            const char* light_shader);
+            const char* light_shader,
+            const char* light_rs_shader);
 
     u32 add_tree_buffer(
             const OCTTree::OctTree& otree);
@@ -32,6 +33,7 @@ class RenderShader{
             const u32 index,
             const OCTTree::OctTree& otree);
     void load_camera(const DT3::Vec3 orgin, const DT3::Vec3 dir);
+    void reset_light(const u32 index, float light_level);
     void run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str);
     void load_screen(
            const Vox_Rend::Screen& scr
@@ -51,8 +53,10 @@ class RenderShader{
     int rst_shader_p;
     int lt_shader;
     int lt_shader_p;
+    int ltr_shader;
+    int ltr_shader_p;
     int ssbo_screen_data;
-    std::vector<std::tuple<int,int>> ssbo_nodes;
+    std::vector<std::tuple<i32,i32,u32>> ssbo_nodes;
     int ssbo_cam;
     int vao;
     // Texture2D text;

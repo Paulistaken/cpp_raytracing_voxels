@@ -1,6 +1,26 @@
 #version 430
 
-layout (local_size_x = 20, local_size_y = 20, local_size_z = 1) in;
+layout (local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
+
+uint hash( uint x ) {
+    x += ( x << 10u );
+    x ^= ( x >>  6u );
+    x += ( x <<  3u );
+    x ^= ( x >> 11u );
+    x += ( x << 15u );
+    return x;
+}
+float random( float f ) {
+    const uint mantissaMask = 0x007FFFFFu;
+    const uint one          = 0x3F800000u;
+   
+    uint h = hash( floatBitsToUint( f ) );
+    h &= mantissaMask;
+    h |= one;
+    
+    float  r2 = uintBitsToFloat( h );
+    return r2 - 1.0;
+}
 
 struct OctTreeSer{
     vec4 pos;
@@ -9,13 +29,13 @@ struct OctTreeSer{
     int size;
 };
 struct OctTreeNodeSer {
+    int kids[8];
     int size;
     int filled_r;
     int filled_g;
     int filled_b;
     int filled_a;
     float light;
-    int kids[8];
 };
 
 struct LightData{
@@ -152,11 +172,8 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
 const float PI = 3.14159265359;
 
 void main(){
-    uint ix = gl_GlobalInvocationID.x;
-    uint iy = gl_GlobalInvocationID.y;
-
-    float angv = float(iy) / 2 / 180 * PI;
-    float angh = float(ix) / 2 / 180 * PI;
+    float angv = random(float(gl_GlobalInvocationID.x)) * 2 * PI;
+    float angh = random(float(gl_GlobalInvocationID.x+gl_GlobalInvocationID.y)) * 2 * PI;
     
     mat3x3 lpitch = mat3x3(1,0,0,0,cos(angv),sin(angv),0,-sin(angv),cos(angv));
     mat3x3 lyaw = mat3x3(cos(angh),0,-sin(angh),0,1,0,sin(angh),0,cos(angh));

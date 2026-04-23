@@ -36,13 +36,13 @@ namespace OCTTree{
     typedef const std::unique_ptr<OctTreeNode>* OTNcpointer;
 
     typedef struct {
+        i32 children[8];
         i32 size;
         i32 filled_r;
         i32 filled_g;
         i32 filled_b;
         i32 filled_a;
         float light;
-        i32 children[8];
     } OctTreeNodeSer;
     typedef struct {
         Vector4 pos;

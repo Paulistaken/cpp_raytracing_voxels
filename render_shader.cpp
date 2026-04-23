@@ -1,4 +1,5 @@
 #include "render_shader.hpp"
+#include <iostream>
 
 typedef struct{
     float deph;
@@ -48,19 +49,25 @@ ScreenData get_screen_data_ser(const Vox_Rend::Screen& scr){
     }
     return shader_scr;
 }
-RenderShader::RenderShader(const char* os, const char* rs, const char* ls){
+RenderShader::RenderShader(const char* os, const char* rs, const char* ls, const char* lsr){
     char* shader_code = LoadFileText(os);
     char* r_shader_code = LoadFileText(rs);
     char* l_shader_code = LoadFileText(ls);
+    char* lr_shader_code = LoadFileText(ls);
     this->otree_shader = rlLoadShader(shader_code, RL_COMPUTE_SHADER);
     this->otree_shader_p = rlLoadShaderProgramCompute(this->otree_shader);
     this->rst_shader = rlLoadShader(r_shader_code, RL_COMPUTE_SHADER);
     this->rst_shader_p = rlLoadShaderProgramCompute(this->rst_shader);
     this->lt_shader = rlLoadShader(l_shader_code, RL_COMPUTE_SHADER);
     this->lt_shader_p = rlLoadShaderProgramCompute(this->lt_shader);
+
+    this->ltr_shader = rlLoadShader(lr_shader_code, RL_COMPUTE_SHADER);
+    this->ltr_shader_p = rlLoadShaderProgramCompute(this->ltr_shader);
+
     UnloadFileText(shader_code);
     UnloadFileText(r_shader_code);
     UnloadFileText(l_shader_code);
+    UnloadFileText(lr_shader_code);
     this->ssbo_screen_data = -1;
     this->ssbo_cam = -1;
 }
@@ -71,7 +78,7 @@ u32 RenderShader::add_tree_buffer(
     i32 c_ssbo_nodes = rlLoadShaderBuffer(sizeof(OCTTree::OctTreeNodeSer) * otreeser.lengh, otreeser.nodes, RL_DYNAMIC_COPY);
     i32 c_ssbo_nodeN = rlLoadShaderBuffer(sizeof(otreeser.data), &otreeser.data, RL_DYNAMIC_COPY);
     free(otreeser.nodes);
-    this->ssbo_nodes.push_back({c_ssbo_nodes,c_ssbo_nodeN});
+    this->ssbo_nodes.push_back({c_ssbo_nodes,c_ssbo_nodeN,otreeser.lengh});
     return this->ssbo_nodes.size() - 1;
 }
 void RenderShader::update_tree_buffer_data(
@@ -79,7 +86,7 @@ void RenderShader::update_tree_buffer_data(
         const OCTTree::OctTree& otree
         ){
     OCTTree::OctTreeDataSer otreeser = OCTTree::serialize_octree_data(otree);
-    auto& [nodes, nodeN] = this->ssbo_nodes[index];
+    auto& [nodes, nodeN, _len] = this->ssbo_nodes[index];
     rlUnloadShaderBuffer(nodeN);
     nodeN = rlLoadShaderBuffer(sizeof(otreeser), &otreeser, RL_DYNAMIC_COPY);
 }
@@ -88,11 +95,12 @@ void RenderShader::update_tree_buffer(
         const OCTTree::OctTree& otree
         ){
     OCTTree::OctTreeSer otreeser = OCTTree::serialize_octtree(otree);
-    auto& [nodes, nodeN] = this->ssbo_nodes[index];
+    auto& [nodes, nodeN, len] = this->ssbo_nodes[index];
     rlUnloadShaderBuffer(nodes);
     rlUnloadShaderBuffer(nodeN);
     nodes = rlLoadShaderBuffer(sizeof(OCTTree::OctTreeNodeSer) * otreeser.lengh, otreeser.nodes, RL_DYNAMIC_COPY);
     nodeN = rlLoadShaderBuffer(sizeof(otreeser.data), &otreeser.data, RL_DYNAMIC_COPY);
+    len = otreeser.lengh;
     free(otreeser.nodes);
 }
 void RenderShader::load_camera(
@@ -106,13 +114,35 @@ void RenderShader::load_camera(
     CamData cam_data = CamData{orgin_ser,dir_ser};
     this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_COPY);
 }
+void RenderShader::reset_light(const u32 index, float ll){
+    auto [c_ssbo_nodes, c_ssbo_nodeN, len] = this->ssbo_nodes[index];
+
+    float lighl = ll;
+
+    // i32 ssbo0_light_level = rlLoadShaderBuffer(sizeof(lighl), &lighl, RL_DYNAMIC_COPY);
+    i32 ssbo0_otree_size = rlLoadShaderBuffer(sizeof(len), &len, RL_DYNAMIC_COPY);
+
+    rlEnableShader(this->ltr_shader_p);
+
+    rlBindShaderBuffer(c_ssbo_nodes, 0);
+    // rlBindShaderBuffer(c_ssbo_nodeN, 1);
+    rlBindShaderBuffer(ssbo0_otree_size, 2);
+    // rlBindShaderBuffer(ssbo0_light_level, 3);
+
+    rlComputeShaderDispatch( (len + (len % 1024))/1024 , 1, 1);
+
+    rlDisableShader();
+    
+    // rlUnloadShaderBuffer(ssbo0_light_level);
+    rlUnloadShaderBuffer(ssbo0_otree_size);
+}
 void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str){
     Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
     LightData light_data = LightData{orgin_ser,light_str};
     i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_COPY);
 
 
-    auto [c_ssbo_nodes, c_ssbo_nodeN] = this->ssbo_nodes[index];
+    auto [c_ssbo_nodes, c_ssbo_nodeN, _len] = this->ssbo_nodes[index];
 
 
     rlEnableShader(this->lt_shader_p);
@@ -121,7 +151,7 @@ void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 l
     rlBindShaderBuffer(c_ssbo_nodeN, 1);
     rlBindShaderBuffer(ssbo0_light, 2);
 
-    rlComputeShaderDispatch(720/20, 720/20, 1);
+    rlComputeShaderDispatch(50, 10, 1);
 
     rlDisableShader();
     
@@ -162,7 +192,7 @@ void RenderShader::reset_screen(Color rst_clr){
 void RenderShader::run_raytracing(
         const u32 index
         ){
-    auto [c_ssbo_nodes, c_ssbo_nodeN] = this->ssbo_nodes[index];
+    auto [c_ssbo_nodes, c_ssbo_nodeN, _len] = this->ssbo_nodes[index];
 
 
     rlEnableShader(this->otree_shader_p);

@@ -39,7 +39,10 @@ int main(){
     Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
 
     RenderShader rnd = RenderShader(
-            "shaders/otree.glsl","shaders/reset_screen.glsl","shaders/ligth.glsl"
+            "shaders/otree.glsl",
+            "shaders/reset_screen.glsl",
+            "shaders/ligth.glsl",
+            "shaders/ligth_rs.glsl"
             );
 
     std::vector<Color> build_colors = {WHITE,RED,GREEN,BLUE,PURPLE, Color{255,255,255,100}, Color{255,0,0,100}, Color{0,255,0,100}, Color{0,0,255,100}};
@@ -96,9 +99,6 @@ int main(){
         rnd.reset_screen(Color{20,125,200,255});
 
         rnd.load_camera(cam.pos, cam.euler_angle);
-
-        // rnd.run_light(0, cam.pos, 0.5);
-        // rnd.run_light(0, DT3::Vec3(0,0,0), 0.5);
 
         rnd.run_raytracing(0);
         rnd.run_raytracing(1);

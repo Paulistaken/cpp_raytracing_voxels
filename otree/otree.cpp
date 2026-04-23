@@ -171,7 +171,7 @@ void OctTree::optimize(){
         nodes[cindex].filled_g=cnode->fill.has_value() ? cnode->fill.value().g : -1;
         nodes[cindex].filled_b=cnode->fill.has_value() ? cnode->fill.value().b : -1;
         nodes[cindex].filled_a=cnode->fill.has_value() ? cnode->fill.value().a : -1;
-        nodes[cindex].light = 0;
+        nodes[cindex].light = 1.0;
         for(int i = 0; i < 8; i++){
             nodes[cindex].children[i]=-1;
             if (!cnode->children[i].has_value()) continue;

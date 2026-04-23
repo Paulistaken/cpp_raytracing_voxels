@@ -5,7 +5,7 @@ layout (local_size_x = 20, local_size_y = 20, local_size_z = 1) in;
 const float FOV = 60;
 
 const int VREZ = 200;
-const bool LGT = false;
+const bool LGT = true;
 struct PixelData{
     float deph;
     uint r;
@@ -24,13 +24,13 @@ struct OctTreeSer{
     int size;
 };
 struct OctTreeNodeSer {
+    int kids[8];
     int size;
     int filled_r;
     int filled_g;
     int filled_b;
     int filled_a;
     float light;
-    int kids[8];
 };
 
 struct CameraData{
