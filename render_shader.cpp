@@ -1,5 +1,7 @@
 #include "render_shader.hpp"
+#include "otree/otree.hpp"
 #include <iostream>
+#include <raylib.h>
 
 typedef struct{
     float deph;
@@ -19,6 +21,7 @@ typedef struct{
 typedef struct{
     Vector4 orgin;
     f32 str;
+    f32 dip;
 } LightData;
 
 void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
@@ -53,7 +56,7 @@ RenderShader::RenderShader(const char* os, const char* rs, const char* ls, const
     char* shader_code = LoadFileText(os);
     char* r_shader_code = LoadFileText(rs);
     char* l_shader_code = LoadFileText(ls);
-    char* lr_shader_code = LoadFileText(ls);
+    char* lr_shader_code = LoadFileText(lsr);
     this->otree_shader = rlLoadShader(shader_code, RL_COMPUTE_SHADER);
     this->otree_shader_p = rlLoadShaderProgramCompute(this->otree_shader);
     this->rst_shader = rlLoadShader(r_shader_code, RL_COMPUTE_SHADER);
@@ -119,26 +122,26 @@ void RenderShader::reset_light(const u32 index, float ll){
 
     float lighl = ll;
 
-    // i32 ssbo0_light_level = rlLoadShaderBuffer(sizeof(lighl), &lighl, RL_DYNAMIC_COPY);
+    i32 ssbo0_light_level = rlLoadShaderBuffer(sizeof(lighl), &lighl, RL_DYNAMIC_COPY);
     i32 ssbo0_otree_size = rlLoadShaderBuffer(sizeof(len), &len, RL_DYNAMIC_COPY);
 
     rlEnableShader(this->ltr_shader_p);
 
     rlBindShaderBuffer(c_ssbo_nodes, 0);
-    // rlBindShaderBuffer(c_ssbo_nodeN, 1);
+    rlBindShaderBuffer(c_ssbo_nodeN, 1);
     rlBindShaderBuffer(ssbo0_otree_size, 2);
-    // rlBindShaderBuffer(ssbo0_light_level, 3);
+    rlBindShaderBuffer(ssbo0_light_level, 3);
 
-    rlComputeShaderDispatch( (len + (len % 1024))/1024 , 1, 1);
+    rlComputeShaderDispatch( len / 1024 + 1 , 1, 1);
 
     rlDisableShader();
-    
-    // rlUnloadShaderBuffer(ssbo0_light_level);
+   
+    rlUnloadShaderBuffer(ssbo0_light_level);
     rlUnloadShaderBuffer(ssbo0_otree_size);
 }
-void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str){
+void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 light_dip, i32 ray_count){
     Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
-    LightData light_data = LightData{orgin_ser,light_str};
+    LightData light_data = LightData{orgin_ser,light_str,light_dip};
     i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_COPY);
 
 
@@ -151,7 +154,7 @@ void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 l
     rlBindShaderBuffer(c_ssbo_nodeN, 1);
     rlBindShaderBuffer(ssbo0_light, 2);
 
-    rlComputeShaderDispatch(50, 10, 1);
+    rlComputeShaderDispatch(ray_count, 1, 1);
 
     rlDisableShader();
     

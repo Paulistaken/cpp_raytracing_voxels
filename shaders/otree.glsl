@@ -61,14 +61,18 @@ bool point_in_area(vec3 point, vec3 bg, vec3 en){
     return true;
 }
 
+const int LightDetail = 0;
+
 RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float dist = 0;
     int qu_indx = 0;
     int qu_node[32];
+    float qu_light[32];
     vec3 qu_pos[32];
 
     qu_node[qu_indx] = 0;
     qu_pos[qu_indx] = vec3(0,0,0);
+    qu_light[qu_indx]=0;
 
     uint cur_n = 0;
     uint cur_r = 0;
@@ -129,15 +133,21 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         int c_indx = qu_node[qu_indx];
         vec3 c_map_pos = qu_pos[qu_indx];
 
+        if (nodes[c_indx].size <= LightDetail){
+            qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
+        }
+
 
         if (nodes[c_indx].filled_r >= 0){
+            qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
             cur_n += 1;
             int new_r = nodes[c_indx].filled_r;
-            if (LGT) new_r = int(float(new_r) * nodes[c_indx].light);
+            float c_light = qu_light[qu_indx];
+            if (LGT) new_r = int(float(new_r) * c_light);
             int new_g = nodes[c_indx].filled_g;
-            if (LGT) new_g = int(float(new_g) * nodes[c_indx].light);
+            if (LGT) new_g = int(float(new_g) * c_light);
             int new_b = nodes[c_indx].filled_b;
-            if (LGT) new_b = int(float(new_b) * nodes[c_indx].light);
+            if (LGT) new_b = int(float(new_b) * c_light);
             cur_r = min( (cur_r * cur_a + new_r * nodes[c_indx].filled_a ) / 255,255);
             cur_g = min( (cur_g * cur_a + new_g * nodes[c_indx].filled_a ) / 255,255);
             cur_b = min( (cur_b * cur_a + new_b * nodes[c_indx].filled_a ) / 255,255);
@@ -164,10 +174,12 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         uint id = ptx + pty * 2 + ptz * 4;
 
         if (nodes[c_indx].kids[id]>0) {
+            float c_light = qu_light[qu_indx];
             qu_indx += 1;
             vec3 npos = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);
             qu_node[qu_indx] = nodes[c_indx].kids[id];
             qu_pos[qu_indx]=npos;
+            qu_light[qu_indx] = c_light;
             continue;
         }else{
             vec3 area_bg = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);

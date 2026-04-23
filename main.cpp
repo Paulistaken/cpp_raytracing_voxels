@@ -100,6 +100,11 @@ int main(){
 
         rnd.load_camera(cam.pos, cam.euler_angle);
 
+        rnd.reset_light(0, 0.0);
+
+        rnd.run_light(0, Vec3(35,25,60), 100.0, 1.0, GetRandomValue(50,70));
+        rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 70));
+
         rnd.run_raytracing(0);
         rnd.run_raytracing(1);
         if (show_preview) rnd.run_raytracing(2);

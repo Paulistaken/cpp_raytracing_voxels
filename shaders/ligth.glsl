@@ -41,6 +41,7 @@ struct OctTreeNodeSer {
 struct LightData{
     vec4 orgin;
     float strengh;
+    float disp;
 };
 
 
@@ -53,6 +54,8 @@ bool point_in_area(vec3 point, vec3 bg, vec3 en){
     if (point.x >= en.x || point.y >= en.y || point.z >= en.z) return false;
     return true;
 }
+
+const int LightDetail = 0;
 
 void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float dist = 0;
@@ -116,9 +119,13 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         int c_indx = qu_node[qu_indx];
         vec3 c_map_pos = qu_pos[qu_indx];
 
-
+        if (nodes[c_indx].size <= LightDetail){
+            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
+            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+        }
         if (nodes[c_indx].filled_r >= 0){
-            nodes[c_indx].light = lightsource.strengh;
+            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
+            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
             if (nodes[c_indx].filled_a >= 255){
                 return;
             }
@@ -172,8 +179,10 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
 const float PI = 3.14159265359;
 
 void main(){
-    float angv = random(float(gl_GlobalInvocationID.x)) * 2 * PI;
-    float angh = random(float(gl_GlobalInvocationID.x+gl_GlobalInvocationID.y)) * 2 * PI;
+    float rand1 = random(float(gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 1000));
+    float rand2 = random(float((gl_GlobalInvocationID.x+17) + (gl_GlobalInvocationID.x-25)/2));
+    float angv = rand1 * 2 * PI;
+    float angh = rand2 * 2 * PI;
     
     mat3x3 lpitch = mat3x3(1,0,0,0,cos(angv),sin(angv),0,-sin(angv),cos(angv));
     mat3x3 lyaw = mat3x3(cos(angh),0,-sin(angh),0,1,0,sin(angh),0,cos(angh));
