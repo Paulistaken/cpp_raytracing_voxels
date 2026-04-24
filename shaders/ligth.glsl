@@ -120,6 +120,8 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         ray_pos += dir * t;
     }
 
+    uint bounc = 0;
+
     while(true){
         if (dist >= maxdist){
             break;
@@ -138,7 +140,10 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
             nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
             nodes[c_indx].light = min(nodes[c_indx].light,1.3);
             if (nodes[c_indx].filled_a >= 255){
-                return;
+                if (bounc >= 2) return;
+                dir = dir * -1;
+                bounc += 1;
+                // return;
             }
         }
 
@@ -203,6 +208,6 @@ void main(){
     dir = lpitch * lyaw * dir;
 
     vec3 pos = vec3(lightsource.orgin.x,lightsource.orgin.y,lightsource.orgin.z);
-    float maxdist = 500;
+    float maxdist = 200;
     do_ray_tracing(pos,dir,maxdist);
 }
