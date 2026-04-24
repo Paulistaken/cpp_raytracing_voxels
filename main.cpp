@@ -15,6 +15,9 @@
 #include <vector>
 
 
+const bool DO_LIGHT = true;
+
+
 const u32 SCREEN_WIDTH = 600;
 const u32 SCREEN_HEIGTH = SCREEN_WIDTH;
 const u32 VIR_REZ = VREZ;
@@ -57,10 +60,13 @@ int main(){
     OctTree otree_preview(7);
 
     create_otree(otree);
-    generate_sphere(otree2, Vec3(10,10,10), 5, -2, {WHITE});
+
+    generate_sphere(otree2, Vec3(10,10,10), 1, -2, {WHITE});
+    generate_sphere(otree2, Vec3(10,10,5), 0.5, -5, {DARKBLUE,DARKGREEN,BLUE,GREEN});
+    otree2.orgin = Vec3(10,10,10);
+
     otree.optimize();
     otree2.optimize();
-    otree2.orgin = Vec3(10,10,10);
 
     SetTargetFPS(60);
 
@@ -70,6 +76,7 @@ int main(){
     bool show_preview = true;
 
     f64 o2yaw = 0.0;
+    f64 o2yawo = 0.0;
 
     rnd.add_tree_buffer(otree);
     rnd.add_tree_buffer(otree2);
@@ -77,13 +84,18 @@ int main(){
 
     rnd.load_screen(screen);
 
+    Vec3 lamp_location = Vec3(10,10,10);
+
     while(!WindowShouldClose()){
 
         rnd.update_tree_buffer_data(0, otree);
         rnd.update_tree_buffer_data(1, otree2);
 
-        otree2.angle = Vec3(0,o2yaw,0);
-        o2yaw += 0.1;
+        lamp_location = Vec3(25,25,25) + DTMat::from_euler_angles(Vec3(0,o2yaw,0)) * Vec3(0,0,30);
+        otree2.position = lamp_location;
+        otree2.angle = Vec3(0,o2yawo,0);
+        o2yaw += 0.0125;
+        o2yawo+= 0.073;
         ClearBackground(Color{20,125,200,255});
 
         auto mouse_pos = GetMousePosition();
@@ -100,10 +112,12 @@ int main(){
 
         rnd.load_camera(cam.pos, cam.euler_angle);
 
-        rnd.reset_light(0, 0.0);
-
-        rnd.run_light(0, Vec3(35,25,60), 100.0, 1.0, GetRandomValue(50,70));
-        rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 70));
+        if (DO_LIGHT) {
+            rnd.reset_light(0, 0.0);
+            rnd.run_light(0, Vec3(35,25,60), 100.0, 1.0, GetRandomValue(50,70));
+            rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 70));
+            rnd.run_light(0, lamp_location + Vec3(10,10,10), 200.0, 1.0, GetRandomValue(50, 70));
+        }
 
         rnd.run_raytracing(0);
         rnd.run_raytracing(1);

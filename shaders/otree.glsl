@@ -63,6 +63,17 @@ bool point_in_area(vec3 point, vec3 bg, vec3 en){
 
 const int LightDetail = 0;
 
+vec3 translate_ray(vec3 pos){
+    mat3x3 cpitch = mat3x3(1,0,0,0,cos(-node_data.angle.x),sin(-node_data.angle.x),0,-sin(-node_data.angle.x),cos(-node_data.angle.x));
+    mat3x3 cyaw = mat3x3(cos(-node_data.angle.y),0,-sin(-node_data.angle.y),0,1,0,sin(-node_data.angle.y),0,cos(-node_data.angle.y));
+    mat3x3 crot = cyaw * cpitch;
+
+    vec3 rpos = pos - node_data.pos.xyz - node_data.orgin.xyz;
+    rpos = crot * rpos;
+    rpos += node_data.orgin.xyz;
+    return rpos;
+}
+
 RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float dist = 0;
     int qu_indx = 0;
@@ -86,8 +97,8 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     mat3x3 cyaw = mat3x3(cos(-node_data.angle.y),0,-sin(-node_data.angle.y),0,1,0,sin(-node_data.angle.y),0,cos(-node_data.angle.y));
     mat3x3 crot = cyaw * cpitch;
 
-    vec3 rpos1 = (crot * (ray_pos - node_data.pos.xyz - node_data.orgin.xyz)) + node_data.orgin.xyz;
-    vec3 rpos2 = (crot * (ray_pos + dir - node_data.pos.xyz - node_data.orgin.xyz)) + node_data.orgin.xyz;
+    vec3 rpos1 = translate_ray(ray_pos);
+    vec3 rpos2 = translate_ray(ray_pos + dir);
 
     ray_pos = rpos1;
     dir = rpos2 - rpos1;
