@@ -16,6 +16,9 @@ struct OctTreeNodeSer {
     int filled_b;
     int filled_a;
     float light;
+    float light_r;
+    float light_g;
+    float light_b;
 };
 
 
@@ -29,4 +32,7 @@ void main(){
 
     if (id >= octree_size) return;
     nodes[id].light = light_level;
+    nodes[id].light_r = 1.0;
+    nodes[id].light_g = 1.0;
+    nodes[id].light_b = 1.0;
 }

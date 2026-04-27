@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <iostream>
 #include <raylib.h>
 #include "vox_render.hpp"
 
@@ -11,7 +10,6 @@
 #include "otree/otree.hpp"
 #include "otree/otree_ray.hpp"
 #include <optional>
-#include <utility>
 #include <vector>
 
 
@@ -37,6 +35,14 @@ void render_camera_view(const OctTree& otree, const Transform3& cam);
 void insert_blocks(OctTree& otree, RenderShader& rnd, OctTree& otree_preview, const Transform3& cam, const std::vector<Color>& build_colors, u32 select_build_color, f64 build_size, i32 build_vx);
 
 int main(){
+
+    bool do_light = DO_LIGHT;
+    bool do_flashlight = true;
+    u32 select_build_color = 0;
+    i32 build_vx_size = 0;
+    f64 build_size = std::pow(2.0,build_vx_size)-0.1;
+    bool show_build_preview = true;
+
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGTH, "ray");
 
     Vox_Rend::Screen screen = Vox_Rend::Screen(SCREEN_WIDTH,SCREEN_HEIGTH,VIR_REZ);
@@ -49,10 +55,7 @@ int main(){
             );
 
     std::vector<Color> build_colors = {WHITE,RED,GREEN,BLUE,PURPLE, Color{255,255,255,100}, Color{255,0,0,100}, Color{0,255,0,100}, Color{0,0,255,100}};
-    u32 select_build_color = 0;
 
-    i32 build_vx_size = 0;
-    f64 build_size = std::pow(2.0,build_vx_size)-0.1;
 
     //128x128x128
     OctTree otree(7);
@@ -73,7 +76,6 @@ int main(){
     Transform3 cam = Transform3({35,25,60},{0.,PI,0.});
     Vec3 mov_velocity = {0,0,0};
     
-    bool show_preview = true;
 
     f64 o2yaw = 0.0;
     f64 o2yawo = 0.0;
@@ -112,17 +114,24 @@ int main(){
 
         rnd.load_camera(cam.pos, cam.euler_angle);
 
-        if (DO_LIGHT) {
+        if (IsKeyPressed(KEY_G)){
+            do_light = !do_light;
+            rnd.reset_light(0, 1.0);
+        }
+        if (IsKeyPressed(KEY_F)) do_flashlight = !do_flashlight;
+
+        if (do_light) {
             rnd.reset_light(0, 0.0);
-            rnd.run_light(0, Vec3(35,25,60), 100.0, 1.0, GetRandomValue(50,70));
-            rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 70));
-            rnd.run_light(0, lamp_location + Vec3(10,10,10), 200.0, 1.0, GetRandomValue(50, 70));
+            if (do_flashlight) {
+                rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 100),Vec3(1,0.9,0.1));
+            }
+            rnd.run_light(0, lamp_location + Vec3(10,10,10), 200.0, 1.0, GetRandomValue(50, 100),Vec3(1,1,1));
         }
 
         rnd.run_raytracing(0);
         rnd.run_raytracing(1);
-        if (show_preview) rnd.run_raytracing(2);
-        if (show_preview) insert_blocks(otree, rnd, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
+        if (show_build_preview) rnd.run_raytracing(2);
+        if (show_build_preview) insert_blocks(otree, rnd, otree_preview, cam, build_colors, select_build_color, build_size, build_vx_size);
 
         rnd.render_screen(screen);
 
@@ -159,17 +168,17 @@ int main(){
         cam.euler_angle.y += (-IsKeyDown(KEY_LEFT) + IsKeyDown(KEY_RIGHT)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
         cam.euler_angle.x += (-IsKeyDown(KEY_UP) + IsKeyDown(KEY_DOWN)) * ROTSPEED * (1.0 / (IsKeyDown(KEY_E)*4.0+1.0));
 
-        show_preview = IsKeyPressed(KEY_P) ? !show_preview : show_preview;
+		if (IsKeyPressed(KEY_P)) show_build_preview = !show_build_preview;
 
         select_build_color = (select_build_color + IsKeyPressed(KEY_O))%build_colors.size();
 
-        select_build_color = IsKeyPressed(KEY_ONE) ? 0 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_TWO) ? 1 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_THREE) ? 2 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_FOUR) ? 3 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_FIVE) ? 4 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_SIX) ? 5 : select_build_color;
-        select_build_color = IsKeyPressed(KEY_SEVEN) ? 6 : select_build_color;
+        if (IsKeyPressed(KEY_ONE)) select_build_color = 0;
+		if (IsKeyPressed(KEY_TWO)) select_build_color = 1;
+		if (IsKeyPressed(KEY_THREE)) select_build_color = 2;
+		if (IsKeyPressed(KEY_FOUR)) select_build_color = 3;
+		if (IsKeyPressed(KEY_FIVE)) select_build_color = 4;
+		if (IsKeyPressed(KEY_SIX)) select_build_color = 5;
+		if (IsKeyPressed(KEY_SEVEN)) select_build_color = 6;
 
         build_size += (IsKeyPressed(KEY_I)-IsKeyPressed(KEY_K))*0.1;
         build_vx_size += IsKeyPressed(KEY_U)-IsKeyPressed(KEY_J);

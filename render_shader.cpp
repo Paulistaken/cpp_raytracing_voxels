@@ -21,6 +21,9 @@ typedef struct{
 typedef struct{
     Vector4 orgin;
     f32 str;
+    f32 r;
+    f32 g;
+    f32 b;
     f32 dip;
 } LightData;
 
@@ -139,9 +142,9 @@ void RenderShader::reset_light(const u32 index, float ll){
     rlUnloadShaderBuffer(ssbo0_light_level);
     rlUnloadShaderBuffer(ssbo0_otree_size);
 }
-void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 light_dip, i32 ray_count){
+void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 light_dip, i32 ray_count, DT3::Vec3 lc){
     Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
-    LightData light_data = LightData{orgin_ser,light_str,light_dip};
+    LightData light_data = LightData{orgin_ser,light_str,(f32)lc.x,(f32)lc.y,(f32)lc.z,light_dip};
     i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_COPY);
 
 

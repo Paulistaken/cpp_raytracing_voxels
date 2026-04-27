@@ -43,6 +43,9 @@ namespace OCTTree{
         i32 filled_b;
         i32 filled_a;
         float light;
+        float light_r;
+        float light_g;
+        float light_b;
     } OctTreeNodeSer;
     typedef struct {
         Vector4 pos;

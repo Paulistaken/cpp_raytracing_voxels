@@ -36,11 +36,17 @@ struct OctTreeNodeSer {
     int filled_b;
     int filled_a;
     float light;
+    float light_r;
+    float light_g;
+    float light_b;
 };
 
 struct LightData{
     vec4 orgin;
     float strengh;
+    float r;
+    float g;
+    float b;
     float disp;
 };
 
@@ -135,14 +141,29 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         if (nodes[c_indx].size <= LightDetail){
             nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
             nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+            nodes[c_indx].light_r += lightsource.r;
+            nodes[c_indx].light_g += lightsource.g;
+            nodes[c_indx].light_b += lightsource.b;
+            float d = sqrt(pow(nodes[c_indx].light_r,2)+pow(nodes[c_indx].light_g,2)+pow(nodes[c_indx].light_b,2));
+            nodes[c_indx].light_r /= d;
+            nodes[c_indx].light_g /= d;
+            nodes[c_indx].light_b /= d;
         }
         if (nodes[c_indx].filled_r >= 0){
             nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
             nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+
+            nodes[c_indx].light_r = nodes[c_indx].light_r + (nodes[c_indx].filled_r * float(nodes[c_indx].filled_a / 255) / 255);
+            nodes[c_indx].light_g = nodes[c_indx].light_g + (nodes[c_indx].filled_g * float(nodes[c_indx].filled_a / 255) / 255);
+            nodes[c_indx].light_b = nodes[c_indx].light_b + (nodes[c_indx].filled_b * float(nodes[c_indx].filled_a / 255) / 255);
+
             if (nodes[c_indx].filled_a >= 255){
-                if (bounc >= 2) return;
+                if (bounc >= 5) return;
                 dir = dir * -1;
                 bounc += 1;
+                nodes[c_indx].light_r = nodes[c_indx].filled_r / 255;
+                nodes[c_indx].light_g = nodes[c_indx].filled_g / 255;
+                nodes[c_indx].light_b = nodes[c_indx].filled_b / 255;
                 // return;
             }
         }

@@ -34,7 +34,7 @@ class RenderShader{
             const OCTTree::OctTree& otree);
     void load_camera(const DT3::Vec3 orgin, const DT3::Vec3 dir);
     void reset_light(const u32 index, float light_level);
-    void run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 ligh_dip, i32 raycount);
+    void run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 ligh_dip, i32 raycount, DT3::Vec3 light_color);
     void load_screen(
            const Vox_Rend::Screen& scr
             );
