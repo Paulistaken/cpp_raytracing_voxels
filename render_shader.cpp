@@ -1,6 +1,5 @@
 #include "render_shader.hpp"
 #include "otree/otree.hpp"
-#include <iostream>
 #include <raylib.h>
 
 typedef struct{
@@ -26,6 +25,19 @@ typedef struct{
     f32 b;
     f32 dip;
 } LightData;
+
+typedef struct{
+    float data_x[2048];
+    float data_y[2048];
+} RandData;
+RandData get_randdata(){
+    RandData rdata;
+    for(int i = 0; i < 2048; i ++){
+        rdata.data_x[i]=((float)GetRandomValue(-10000, 10000)) / 10000.0;
+        rdata.data_y[i]=((float)GetRandomValue(-10000, 10000)) / 10000.0;
+    }
+    return rdata;
+}
 
 void unser_screen_data(Vox_Rend::Screen& scr, const ScreenData& shader_scr){
     for(int y = 0; y < VREZ; y++){
@@ -96,7 +108,7 @@ void RenderShader::update_tree_buffer_data(
     rlUnloadShaderBuffer(nodeN);
     nodeN = rlLoadShaderBuffer(sizeof(otreeser), &otreeser, RL_DYNAMIC_COPY);
 }
-void RenderShader::update_tree_buffer(
+void RenderShader::update_tree_buffer_voxels(
         const u32 index,
         const OCTTree::OctTree& otree
         ){
@@ -109,24 +121,25 @@ void RenderShader::update_tree_buffer(
     len = otreeser.lengh;
     free(otreeser.nodes);
 }
-void RenderShader::load_camera(
-        const DT3::Vec3 orgin, const DT3::Vec3 dir
+void RenderShader::load_camera_data(
+        const DT3::Transform3 cam
         ){
     if (this->ssbo_cam != -1){
         rlUnloadShaderBuffer(this->ssbo_cam);
     }
-    Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
+    DT3::Vec3 dir = cam.euler_angle;
+    Vector4 orgin_ser = Vector4{(f32)cam.pos.x, (f32)cam.pos.y,(f32)cam.pos.z,0.0};
     Vector4 dir_ser = Vector4{(f32)dir.x, (f32)dir.y,(f32)dir.z,0.0};
     CamData cam_data = CamData{orgin_ser,dir_ser};
-    this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_COPY);
+    this->ssbo_cam = rlLoadShaderBuffer(sizeof(cam_data), &cam_data, RL_DYNAMIC_READ);
 }
-void RenderShader::reset_light(const u32 index, float ll){
+void RenderShader::reset_octtree_light(const u32 index, float ll){
     auto [c_ssbo_nodes, c_ssbo_nodeN, len] = this->ssbo_nodes[index];
 
     float lighl = ll;
 
-    i32 ssbo0_light_level = rlLoadShaderBuffer(sizeof(lighl), &lighl, RL_DYNAMIC_COPY);
-    i32 ssbo0_otree_size = rlLoadShaderBuffer(sizeof(len), &len, RL_DYNAMIC_COPY);
+    i32 ssbo0_light_level = rlLoadShaderBuffer(sizeof(lighl), &lighl, RL_DYNAMIC_READ);
+    i32 ssbo0_otree_size = rlLoadShaderBuffer(sizeof(len), &len, RL_DYNAMIC_READ);
 
     rlEnableShader(this->ltr_shader_p);
 
@@ -142,10 +155,13 @@ void RenderShader::reset_light(const u32 index, float ll){
     rlUnloadShaderBuffer(ssbo0_light_level);
     rlUnloadShaderBuffer(ssbo0_otree_size);
 }
-void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 light_dip, i32 ray_count, DT3::Vec3 lc){
+void RenderShader::run_light_raytracing(const u32 index, const DT3::Vec3 orgin, const f32 light_str, f32 light_dip, i32 ray_count, DT3::Vec3 lc){
     Vector4 orgin_ser = Vector4{(f32)orgin.x, (f32)orgin.y,(f32)orgin.z,0.0};
     LightData light_data = LightData{orgin_ser,light_str,(f32)lc.x,(f32)lc.y,(f32)lc.z,light_dip};
-    i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_COPY);
+    i32 ssbo0_light = rlLoadShaderBuffer(sizeof(light_data), &light_data, RL_DYNAMIC_READ);
+
+    RandData rdata = get_randdata();
+    i32 ssbo0_rdata=rlLoadShaderBuffer(sizeof(rdata), &rdata, RL_DYNAMIC_READ);
 
 
     auto [c_ssbo_nodes, c_ssbo_nodeN, _len] = this->ssbo_nodes[index];
@@ -156,14 +172,16 @@ void RenderShader::run_light(const u32 index, const DT3::Vec3 orgin, const f32 l
     rlBindShaderBuffer(c_ssbo_nodes, 0);
     rlBindShaderBuffer(c_ssbo_nodeN, 1);
     rlBindShaderBuffer(ssbo0_light, 2);
+    rlBindShaderBuffer(ssbo0_rdata, 3);
 
     rlComputeShaderDispatch(ray_count, 1, 1);
 
     rlDisableShader();
     
     rlUnloadShaderBuffer(ssbo0_light);
+    rlUnloadShaderBuffer(ssbo0_rdata);
 }
-void RenderShader::load_screen(
+void RenderShader::load_screen_data(
         const Vox_Rend::Screen& scr
         ){
     if (this->ssbo_screen_data != -1){
@@ -178,10 +196,10 @@ void RenderShader::render_screen(Vox_Rend::Screen& scr){
     unser_screen_data(scr, shader_scr);
 }
 
-void RenderShader::reset_screen(Color rst_clr){
+void RenderShader::reset_screen_data(Color rst_clr){
     u32 reset_color[4] = {rst_clr.r,rst_clr.g,rst_clr.b,rst_clr.a};
     
-    i32 clr_buf = rlLoadShaderBuffer(sizeof(reset_color), reset_color, RL_DYNAMIC_COPY);
+    i32 clr_buf = rlLoadShaderBuffer(sizeof(reset_color), reset_color, RL_DYNAMIC_READ);
 
     rlEnableShader(this->rst_shader_p);
 
@@ -208,7 +226,8 @@ void RenderShader::run_raytracing(
     rlBindShaderBuffer(c_ssbo_nodeN, 2);
     rlBindShaderBuffer(this->ssbo_cam, 3);
 
-    rlComputeShaderDispatch(VREZ/20, VREZ/20, 1);
+    rlComputeShaderDispatch(1, VREZ, 1);
+    // rlComputeShaderDispatch(VREZ/20, VREZ/20, 1);
 
     rlDisableShader();
 }

@@ -2,26 +2,6 @@
 
 layout (local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
-uint hash( uint x ) {
-    x += ( x << 10u );
-    x ^= ( x >>  6u );
-    x += ( x <<  3u );
-    x ^= ( x >> 11u );
-    x += ( x << 15u );
-    return x;
-}
-float random( float f ) {
-    const uint mantissaMask = 0x007FFFFFu;
-    const uint one          = 0x3F800000u;
-   
-    uint h = hash( floatBitsToUint( f ) );
-    h &= mantissaMask;
-    h |= one;
-    
-    float  r2 = uintBitsToFloat( h );
-    return r2 - 1.0;
-}
-
 struct OctTreeSer{
     vec4 pos;
     vec4 orgin;
@@ -50,11 +30,17 @@ struct LightData{
     float b;
     float disp;
 };
+const uint RANDSZ=2048;
+struct RandData{
+    float data_x[RANDSZ];
+    float data_y[RANDSZ];
+};
 
 
 layout(std430, binding=0) buffer ssbo0 { OctTreeNodeSer nodes[]; };
 layout(std430, binding=1) buffer ssbo1 { OctTreeSer node_data; };
 layout(std430, binding=2) buffer ssbo2 { LightData lightsource; };
+layout(std430, binding=3) buffer ssbo3 { RandData rdata; };
 
 bool point_in_area(vec3 point, vec3 bg, vec3 en){
     if (point.x <= bg.x || point.y <= bg.y || point.z <= bg.z) return false;
@@ -120,6 +106,8 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     }
 
     uint bounc = 0;
+    
+    vec3 clight = vec3(lightsource.r,lightsource.g,lightsource.b);
 
     while(true){
         if (dist >= maxdist){
@@ -141,13 +129,40 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
             continue;
         }
 
-        if (nodes[c_indx].size <= LightDetail){
+        if (nodes[c_indx].filled_r >= 0){
+            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
+            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+
+            nodes[c_indx].light_r=clight.x;
+            nodes[c_indx].light_g=clight.y;
+            nodes[c_indx].light_b=clight.z;
+
+            if (nodes[c_indx].ref >= 10){
+                nodes[c_indx].filled_r = int(clight.x * 255);
+                nodes[c_indx].filled_g = int(clight.y * 255);
+                nodes[c_indx].filled_b = int(clight.z * 255);
+            }else{
+                clight.x = clight.x + float(nodes[c_indx].filled_r) * float(nodes[c_indx].filled_a / 255) / 255;
+                clight.y = clight.y + float(nodes[c_indx].filled_g) * float(nodes[c_indx].filled_a / 255) / 255;
+                clight.z = clight.z + float(nodes[c_indx].filled_b) * float(nodes[c_indx].filled_a / 255) / 255;
+            }
+
+            if (nodes[c_indx].filled_a >= 255){
+                if (bounc >= 0) return;
+                dir *= -1;
+                bounc += 1;
+                clight.x = nodes[c_indx].filled_r / 255;
+                clight.y = nodes[c_indx].filled_g / 255;
+                clight.z = nodes[c_indx].filled_b / 255;
+            }
+        }
+        else if (nodes[c_indx].size <= LightDetail){
 
             float c_str = nodes[c_indx].light;
             float n_str = min(lightsource.strengh / (dist*dist*lightsource.disp),1.3);
 
             vec3 c_light = vec3(nodes[c_indx].light_r,nodes[c_indx].light_g, nodes[c_indx].light_b) * c_str;
-            vec3 n_light = vec3(lightsource.r,lightsource.g,lightsource.b) * n_str;
+            vec3 n_light = vec3(clight.x,clight.y,clight.z) * n_str;
 
             vec3 w_light = c_light + n_light;
             float d = sqrt(pow(w_light.x,2)+pow(w_light.y,2)+pow(w_light.z,2));
@@ -157,31 +172,11 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
             nodes[c_indx].light_g = w_light.y;
             nodes[c_indx].light_b = w_light.z;
 
-            nodes[c_indx].light = c_str + n_str;
-            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+            // nodes[c_indx].light = c_str + n_str;
+            nodes[c_indx].light = min(max(c_str,n_str),1.3);
+            // nodes[c_indx].light = min(nodes[c_indx].light,1.3);
 
 
-        }
-        if (nodes[c_indx].filled_r >= 0){
-            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
-            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
-
-            nodes[c_indx].light_r = nodes[c_indx].light_r + (nodes[c_indx].filled_r * float(nodes[c_indx].filled_a / 255) / 255);
-            nodes[c_indx].light_g = nodes[c_indx].light_g + (nodes[c_indx].filled_g * float(nodes[c_indx].filled_a / 255) / 255);
-            nodes[c_indx].light_b = nodes[c_indx].light_b + (nodes[c_indx].filled_b * float(nodes[c_indx].filled_a / 255) / 255);
-
-            if (nodes[c_indx].ref >= 10){
-                nodes[c_indx].filled_r = int(nodes[c_indx].light_r * 255);
-                nodes[c_indx].filled_g = int(nodes[c_indx].light_g * 255);
-                nodes[c_indx].filled_b = int(nodes[c_indx].light_b * 255);
-            }else if (nodes[c_indx].filled_a >= 255){
-                if (bounc >= 0) return;
-                dir = dir * -1;
-                bounc += 1;
-                nodes[c_indx].light_r = nodes[c_indx].filled_r / 255;
-                nodes[c_indx].light_g = nodes[c_indx].filled_g / 255;
-                nodes[c_indx].light_b = nodes[c_indx].filled_b / 255;
-            }
         }
 
         uint ptx = ray_pos.x < c_map_pos.x + (psize / 2) ? 0 : 1;
@@ -221,10 +216,12 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
 const float PI = 3.14159265359;
 
 void main(){
-    float rand1 = random(float(gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 1000));
-    float rand2 = random(float((gl_GlobalInvocationID.x+17) + (gl_GlobalInvocationID.x-25)/2));
-    float angv = rand1 * 2 * PI;
-    float angh = rand2 * 2 * PI;
+    uint id1 = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 13 + gl_GlobalInvocationID.x % 7) % RANDSZ;
+    uint id2 = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 7) % RANDSZ;
+    float rnumbx = rdata.data_x[id1] + rdata.data_x[id2];
+    float rnumby = rdata.data_y[id2] + rdata.data_y[id1];
+    float angv = rnumbx * 2 * PI;
+    float angh = rnumby * 2 * PI;
     
     mat3x3 lpitch = mat3x3(1,0,0,0,cos(angv),sin(angv),0,-sin(angv),cos(angv));
     mat3x3 lyaw = mat3x3(cos(angh),0,-sin(angh),0,1,0,sin(angh),0,cos(angh));

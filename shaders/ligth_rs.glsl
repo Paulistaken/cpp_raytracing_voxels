@@ -36,4 +36,9 @@ void main(){
     nodes[id].light_r = 1.0;
     nodes[id].light_g = 1.0;
     nodes[id].light_b = 1.0;
+    if (nodes[id].ref >= 10){
+        nodes[id].filled_r = 1;
+        nodes[id].filled_g = 1;
+        nodes[id].filled_b = 1;
+    }
 }
