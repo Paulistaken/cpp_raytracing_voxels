@@ -5,7 +5,9 @@ layout (local_size_x = 20, local_size_y = 20, local_size_z = 1) in;
 const float FOV = 60;
 
 const int VREZ = 200;
-const bool LGT = true;
+
+#define LGT
+
 struct PixelData{
     float deph;
     uint r;
@@ -34,6 +36,7 @@ struct OctTreeNodeSer {
     float light_r;
     float light_g;
     float light_b;
+    uint ref;
 };
 
 struct CameraData{
@@ -81,14 +84,17 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float dist = 0;
     int qu_indx = 0;
     int qu_node[32];
-    float qu_light[32];
-    vec3 qu_light_c[32];
     vec3 qu_pos[32];
+
+    #ifdef LGT
+        float qu_light[32];
+        vec3 qu_light_c[32];
+        qu_light[qu_indx]=0;
+        qu_light_c[qu_indx]=vec3(1,1,1);
+    #endif
 
     qu_node[qu_indx] = 0;
     qu_pos[qu_indx] = vec3(0,0,0);
-    qu_light[qu_indx]=0;
-    qu_light_c[qu_indx]=vec3(1,1,1);
 
     uint cur_n = 0;
     uint cur_r = 0;
@@ -111,29 +117,21 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float apsize = pow(2,nodes[0].size);
     if (!point_in_area(ray_pos,vec3(0,0,0),vec3(apsize,apsize,apsize))){
 
-        float bg = 0.1;
-        float en = apsize - 0.1;
+        float bg = 0.5;
+        float en = apsize - 0.5;
+
+        vec3 vbg = vec3(0,0,0);
+        vec3 ven = vec3(apsize,apsize,apsize);
 
         float t = 1000000;
-        float pt=t;
-        if (dir.x>0 && ray_pos.x < bg) t = min(t, (bg-ray_pos.x)/dir.x);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.x<0 && ray_pos.x > en) t = min(t, (en-ray_pos.x)/dir.x);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.y>0 && ray_pos.y < bg) t = min(t, (bg-ray_pos.y)/dir.y);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.z>0 && ray_pos.z < bg) t = min(t, (bg-ray_pos.z)/dir.z);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.y<0 && ray_pos.y > en) t = min(t, (en-ray_pos.y)/dir.y);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.z<0 && ray_pos.z > en) t = min(t, (en-ray_pos.z)/dir.z);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
+
+        float tx = dir.x == 0 ? t : (((dir.x > 0) ? bg : en) - ray_pos.x) / dir.x;
+        float ty = dir.y == 0 ? t : (((dir.y > 0) ? bg : en) - ray_pos.y) / dir.y;
+        float tz = dir.z == 0 ? t : (((dir.z > 0) ? bg : en) - ray_pos.z) / dir.z;
+
+        if (tx > 0 && point_in_area(ray_pos + dir * tx,vbg,ven)) t = min(tx,t);
+        if (ty > 0 && point_in_area(ray_pos + dir * ty,vbg,ven)) t = min(ty,t);
+        if (tz > 0 && point_in_area(ray_pos + dir * tz,vbg,ven)) t = min(tz,t);
 
         dist += t;
         ray_pos += dir * t;
@@ -149,23 +147,27 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         int c_indx = qu_node[qu_indx];
         vec3 c_map_pos = qu_pos[qu_indx];
 
-        if (nodes[c_indx].size <= LightDetail){
-            qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
-            qu_light_c[qu_indx] = vec3(nodes[c_indx].light_r,nodes[c_indx].light_g,nodes[c_indx].light_b);
-        }
+        #ifdef LGT
+            if (nodes[c_indx].size <= LightDetail){
+                qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
+                qu_light_c[qu_indx] = vec3(nodes[c_indx].light_r,nodes[c_indx].light_g,nodes[c_indx].light_b);
+            }
+        #endif
 
 
         if (nodes[c_indx].filled_r >= 0){
-            qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
             cur_n += 1;
             int new_r = nodes[c_indx].filled_r;
-            float c_light = qu_light[qu_indx];
-            vec3 c_light_c = qu_light_c[qu_indx] * c_light;
-            if (LGT) new_r = int(float(new_r) * c_light_c.x);
             int new_g = nodes[c_indx].filled_g;
-            if (LGT) new_g = int(float(new_g) * c_light_c.y);
             int new_b = nodes[c_indx].filled_b;
-            if (LGT) new_b = int(float(new_b) * c_light_c.z);
+            #ifdef LGT 
+                qu_light[qu_indx] = max(qu_light[qu_indx],nodes[c_indx].light);
+                float c_light = qu_light[qu_indx];
+                vec3 c_light_c = qu_light_c[qu_indx] * c_light;
+                new_r = int(float(new_r) * c_light_c.x);
+                new_g = int(float(new_g) * c_light_c.y);
+                new_b = int(float(new_b) * c_light_c.z);
+            #endif
             cur_r = min( (cur_r * cur_a + new_r * nodes[c_indx].filled_a ) / 255,255);
             cur_g = min( (cur_g * cur_a + new_g * nodes[c_indx].filled_a ) / 255,255);
             cur_b = min( (cur_b * cur_a + new_b * nodes[c_indx].filled_a ) / 255,255);
@@ -192,14 +194,22 @@ RayResult do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         uint id = ptx + pty * 2 + ptz * 4;
 
         if (nodes[c_indx].kids[id]>0) {
-            float c_light = qu_light[qu_indx];
-            vec3 c_light_c = qu_light_c[qu_indx];
+
+            #ifdef LGT
+                float c_light = qu_light[qu_indx];
+                vec3 c_light_c = qu_light_c[qu_indx];
+            #endif
+
             qu_indx += 1;
             vec3 npos = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);
             qu_node[qu_indx] = nodes[c_indx].kids[id];
             qu_pos[qu_indx]=npos;
-            qu_light[qu_indx] = c_light;
-            qu_light_c[qu_indx] = c_light_c;
+
+            #ifdef LGT
+                qu_light[qu_indx] = c_light;
+                qu_light_c[qu_indx] = c_light_c;
+            #endif
+            
             continue;
         }else{
             vec3 area_bg = c_map_pos + vec3(ptx,pty,ptz)*(psize/2);
@@ -233,6 +243,7 @@ const float PI = 3.14159265359;
 void main(){
     uint ix = gl_GlobalInvocationID.x;
     uint iy = gl_GlobalInvocationID.y;
+    if (ix>=VREZ||iy>=VREZ) return;
 
     float angstep = FOV / float(VREZ);
     

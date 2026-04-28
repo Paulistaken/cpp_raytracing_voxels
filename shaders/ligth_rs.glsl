@@ -19,6 +19,7 @@ struct OctTreeNodeSer {
     float light_r;
     float light_g;
     float light_b;
+    uint ref;
 };
 
 

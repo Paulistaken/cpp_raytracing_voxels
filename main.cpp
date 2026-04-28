@@ -29,6 +29,18 @@ typedef DT3::Vec3 Vec3;
 typedef DT3::Transform3 Transform3;
 typedef DTMat::Mat3 Mat3;
 
+
+struct LightSource{
+    public:
+    Vec3 pos;
+    Vec3 orgin;
+    Vec3 color;
+    float strengh;
+    float dep;
+    u32 rc;
+    void render(RenderShader&, u32 index) const;
+};
+
 void create_otree(OctTree& otree);
 void generate_sphere(OctTree& octree, const Vec3& center, f64 size, i32 voxelsize,const std::vector<Color>& fill);
 void render_camera_view(const OctTree& otree, const Transform3& cam);
@@ -54,13 +66,14 @@ int main(){
             "shaders/ligth_rs.glsl"
             );
 
-    std::vector<Color> build_colors = {WHITE,RED,GREEN,BLUE,PURPLE, Color{255,255,255,100}, Color{255,0,0,100}, Color{0,255,0,100}, Color{0,0,255,100}};
+    std::vector<Color> build_colors = {WHITE,RED,GREEN,BLUE,PURPLE, Color{255,255,255,170}, Color{255,0,0,170}, Color{0,255,0,170}, Color{0,0,255,170}};
 
 
     //128x128x128
     OctTree otree(7);
     OctTree otree2(6);
     OctTree otree_preview(7);
+
 
     create_otree(otree);
 
@@ -85,6 +98,11 @@ int main(){
     rnd.add_tree_buffer(otree_preview);
 
     rnd.load_screen(screen);
+
+    LightSource light_flash = LightSource{Vec3(),Vec3(),Vec3(1,0.9,0.1),25,1,100};
+    LightSource light_sun = LightSource{Vec3(),Vec3(),Vec3(1,1,1),100,1,100};
+
+    light_sun.orgin = otree2.orgin;
 
     Vec3 lamp_location = Vec3(10,10,10);
 
@@ -121,11 +139,15 @@ int main(){
         if (IsKeyPressed(KEY_F)) do_flashlight = !do_flashlight;
 
         if (do_light) {
+            light_flash.pos = cam.pos;
+            light_sun.pos = otree2.position;
             rnd.reset_light(0, 0.0);
             if (do_flashlight) {
-                rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 100),Vec3(1,0.9,0.1));
+                light_flash.render(rnd, 0);
+                // rnd.run_light(0, cam.pos, 25.0, 0.25, GetRandomValue(50, 100),Vec3(1,0.9,0.1));
             }
-            rnd.run_light(0, lamp_location + Vec3(10,10,10), 200.0, 1.0, GetRandomValue(50, 100),Vec3(1,1,1));
+            light_sun.render(rnd, 0);
+            // rnd.run_light(0, lamp_location + Vec3(10,10,10), 200.0, 1.0, GetRandomValue(50, 100),Vec3(1,1,1));
         }
 
         rnd.run_raytracing(0);
@@ -184,6 +206,11 @@ int main(){
         build_vx_size += IsKeyPressed(KEY_U)-IsKeyPressed(KEY_J);
 
     }
+}
+
+void LightSource::render(RenderShader& rd, u32 index) const{
+    rd.run_light(index, this->pos + this->orgin, this->strengh, this->dep, this->rc, this->color);
+
 }
 
 void rm_sphere(OctTree& otree, const Vec3& center, f64 size, i32 voxelsize){
@@ -252,6 +279,7 @@ void insert_blocks(
         rnd.update_tree_buffer(0, otree);
         
     }else if (IsKeyPressed(KEY_M) || IsMouseButtonPressed(MOUSE_BUTTON_RIGHT)) {
+        insert_pos -= (cam_forward * (build_size/2));
         rm_sphere(otree, insert_map_pos, build_size, vx);
         otree.optimize();
         rnd.update_tree_buffer(0, otree);

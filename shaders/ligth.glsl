@@ -39,6 +39,7 @@ struct OctTreeNodeSer {
     float light_r;
     float light_g;
     float light_b;
+    uint ref;
 };
 
 struct LightData{
@@ -98,29 +99,21 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
     float apsize = pow(2,nodes[0].size);
     if (!point_in_area(ray_pos,vec3(0,0,0),vec3(apsize,apsize,apsize))){
 
-        float bg = 0.1;
-        float en = apsize - 0.1;
+        float bg = 0.5;
+        float en = apsize - 0.5;
+
+        vec3 vbg = vec3(0,0,0);
+        vec3 ven = vec3(apsize,apsize,apsize);
 
         float t = 1000000;
-        float pt=t;
-        if (dir.x>0 && ray_pos.x < bg) t = min(t, (bg-ray_pos.x)/dir.x);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.x<0 && ray_pos.x > en) t = min(t, (en-ray_pos.x)/dir.x);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.y>0 && ray_pos.y < bg) t = min(t, (bg-ray_pos.y)/dir.y);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.z>0 && ray_pos.z < bg) t = min(t, (bg-ray_pos.z)/dir.z);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.y<0 && ray_pos.y > en) t = min(t, (en-ray_pos.y)/dir.y);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
-        if (dir.z<0 && ray_pos.z > en) t = min(t, (en-ray_pos.z)/dir.z);
-        pt=t;
-        if(!point_in_area(ray_pos+dir*t,vec3(0,0,0),vec3(apsize,apsize,apsize))) t=pt;
+
+        float tx = dir.x == 0 ? t : (((dir.x > 0) ? bg : en) - ray_pos.x) / dir.x;
+        float ty = dir.y == 0 ? t : (((dir.y > 0) ? bg : en) - ray_pos.y) / dir.y;
+        float tz = dir.z == 0 ? t : (((dir.z > 0) ? bg : en) - ray_pos.z) / dir.z;
+
+        if (tx > 0 && point_in_area(ray_pos + dir * tx,vbg,ven)) t = min(tx,t);
+        if (ty > 0 && point_in_area(ray_pos + dir * ty,vbg,ven)) t = min(ty,t);
+        if (tz > 0 && point_in_area(ray_pos + dir * tz,vbg,ven)) t = min(tz,t);
 
         dist += t;
         ray_pos += dir * t;
@@ -137,37 +130,6 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
 
         int c_indx = qu_node[qu_indx];
         vec3 c_map_pos = qu_pos[qu_indx];
-
-        if (nodes[c_indx].size <= LightDetail){
-            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
-            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
-            nodes[c_indx].light_r += lightsource.r;
-            nodes[c_indx].light_g += lightsource.g;
-            nodes[c_indx].light_b += lightsource.b;
-            float d = sqrt(pow(nodes[c_indx].light_r,2)+pow(nodes[c_indx].light_g,2)+pow(nodes[c_indx].light_b,2));
-            nodes[c_indx].light_r /= d;
-            nodes[c_indx].light_g /= d;
-            nodes[c_indx].light_b /= d;
-        }
-        if (nodes[c_indx].filled_r >= 0){
-            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
-            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
-
-            nodes[c_indx].light_r = nodes[c_indx].light_r + (nodes[c_indx].filled_r * float(nodes[c_indx].filled_a / 255) / 255);
-            nodes[c_indx].light_g = nodes[c_indx].light_g + (nodes[c_indx].filled_g * float(nodes[c_indx].filled_a / 255) / 255);
-            nodes[c_indx].light_b = nodes[c_indx].light_b + (nodes[c_indx].filled_b * float(nodes[c_indx].filled_a / 255) / 255);
-
-            if (nodes[c_indx].filled_a >= 255){
-                if (bounc >= 5) return;
-                dir = dir * -1;
-                bounc += 1;
-                nodes[c_indx].light_r = nodes[c_indx].filled_r / 255;
-                nodes[c_indx].light_g = nodes[c_indx].filled_g / 255;
-                nodes[c_indx].light_b = nodes[c_indx].filled_b / 255;
-                // return;
-            }
-        }
-
         float psize = pow(2.0, float(nodes[c_indx].size));
 
         if (ray_pos.x < c_map_pos.x || ray_pos.y < c_map_pos.y || ray_pos.z < c_map_pos.z){
@@ -177,6 +139,49 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
         if (ray_pos.x > c_map_pos.x + psize || ray_pos.y > c_map_pos.y + psize || ray_pos.z > c_map_pos.z + psize){
             qu_indx -= 1;
             continue;
+        }
+
+        if (nodes[c_indx].size <= LightDetail){
+
+            float c_str = nodes[c_indx].light;
+            float n_str = min(lightsource.strengh / (dist*dist*lightsource.disp),1.3);
+
+            vec3 c_light = vec3(nodes[c_indx].light_r,nodes[c_indx].light_g, nodes[c_indx].light_b) * c_str;
+            vec3 n_light = vec3(lightsource.r,lightsource.g,lightsource.b) * n_str;
+
+            vec3 w_light = c_light + n_light;
+            float d = sqrt(pow(w_light.x,2)+pow(w_light.y,2)+pow(w_light.z,2));
+            w_light /= d;
+
+            nodes[c_indx].light_r = w_light.x;
+            nodes[c_indx].light_g = w_light.y;
+            nodes[c_indx].light_b = w_light.z;
+
+            nodes[c_indx].light = c_str + n_str;
+            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+
+
+        }
+        if (nodes[c_indx].filled_r >= 0){
+            nodes[c_indx].light = max(nodes[c_indx].light, lightsource.strengh / (dist*dist*lightsource.disp));
+            nodes[c_indx].light = min(nodes[c_indx].light,1.3);
+
+            nodes[c_indx].light_r = nodes[c_indx].light_r + (nodes[c_indx].filled_r * float(nodes[c_indx].filled_a / 255) / 255);
+            nodes[c_indx].light_g = nodes[c_indx].light_g + (nodes[c_indx].filled_g * float(nodes[c_indx].filled_a / 255) / 255);
+            nodes[c_indx].light_b = nodes[c_indx].light_b + (nodes[c_indx].filled_b * float(nodes[c_indx].filled_a / 255) / 255);
+
+            if (nodes[c_indx].ref >= 10){
+                nodes[c_indx].filled_r = int(nodes[c_indx].light_r * 255);
+                nodes[c_indx].filled_g = int(nodes[c_indx].light_g * 255);
+                nodes[c_indx].filled_b = int(nodes[c_indx].light_b * 255);
+            }else if (nodes[c_indx].filled_a >= 255){
+                if (bounc >= 0) return;
+                dir = dir * -1;
+                bounc += 1;
+                nodes[c_indx].light_r = nodes[c_indx].filled_r / 255;
+                nodes[c_indx].light_g = nodes[c_indx].filled_g / 255;
+                nodes[c_indx].light_b = nodes[c_indx].filled_b / 255;
+            }
         }
 
         uint ptx = ray_pos.x < c_map_pos.x + (psize / 2) ? 0 : 1;

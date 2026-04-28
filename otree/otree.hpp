@@ -13,6 +13,7 @@ namespace OCTTree{
     class OctTreeNode{
         public:
         std::optional<Color> fill;
+        bool reflective;
         i32 size;
         std::optional<std::unique_ptr<OctTreeNode>> children[8];
         OctTreeNode(std::optional<Color> fill, i32 size);
@@ -28,6 +29,7 @@ namespace OCTTree{
         OctTree(i32 size);
         fn clear() -> void;
         fn insert_node(const Color& fill, const Vec3& position, const i32& size) -> void;
+        fn insert_node(const Color& fill, const Vec3& position, const i32& size, const bool reflective) -> void;
         fn remove_node(const Vec3& position, const i32& size) -> void;
         fn is_pos_filled(const Vec3& position) const -> std::optional<Color>;
         fn optimize() -> void;
@@ -46,6 +48,7 @@ namespace OCTTree{
         float light_r;
         float light_g;
         float light_b;
+        u32 ref;
     } OctTreeNodeSer;
     typedef struct {
         Vector4 pos;

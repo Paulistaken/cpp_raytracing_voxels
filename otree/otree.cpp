@@ -10,7 +10,10 @@ namespace OCTTree{
 
 typedef DT3::Vec3 Vec3;
 
-OctTreeNode::OctTreeNode(std::optional<Color> fill, i32 size){this->fill = fill;this->size = size;}
+OctTreeNode::OctTreeNode(std::optional<Color> fill, i32 size){
+    this->fill = fill;this->size = size;this->reflective = false;
+    for(auto& kd : this->children){kd = {};}
+}
 OctTree::OctTree(i32 size){
     this->size=size;
     std::unique_ptr<OctTreeNode> root(new OctTreeNode({},size));
@@ -71,22 +74,25 @@ void OctTree::OctTree::remove_node(const Vec3& position, const i32& size){
         if (c_node->get()->fill.has_value()){
             for (auto& kd : c_node->get()->children){
                 kd.emplace(new OctTreeNode(c_node->get()->fill,c_node->get()->size-1));
+                kd.value()->fill=c_node->get()->fill;
             }
             c_node->get()->fill={};
+            continue;
         }
         bool ptx = !(position.x < c_pos.x + (psize / 2));
         bool pty = !(position.y < c_pos.y + (psize / 2));
         bool ptz = !(position.z < c_pos.z + (psize / 2));
         u32 id = ptx + pty*2 + ptz*4;
         c_pos += Vec3(ptx,pty,ptz) * (psize/2);
-        if (!c_node->get()->children[id].has_value()){
-            break;
-        }
+        if (!c_node->get()->children[id].has_value()) break;
         c_node = &c_node->get()->children[id].value();
         continue;
     }
 }
 void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, const i32& size){
+    this->insert_node(fill,position,size,false);
+}
+void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, const i32& size, const bool rf){
     OctTree& tree = *this;
     Vec3 c_pos = Vec3(0,0,0); 
     OTNcpointer c_node = &tree.root;
@@ -98,6 +104,7 @@ void OctTree::OctTree::insert_node(const Color& fill, const Vec3& position, cons
                 c_node->get()->size <= size
            ){
             c_node->get()->fill=fill;
+            c_node->get()->reflective = rf;
             break;
         }
         bool ptx = !(position.x < c_pos.x + (psize / 2));
@@ -175,6 +182,7 @@ void OctTree::optimize(){
         nodes[cindex].light_r = 1.0;
         nodes[cindex].light_g = 1.0;
         nodes[cindex].light_b = 1.0;
+        nodes[cindex].ref = cnode->reflective ? 20 : 0;
         for(int i = 0; i < 8; i++){
             nodes[cindex].children[i]=-1;
             if (!cnode->children[i].has_value()) continue;
