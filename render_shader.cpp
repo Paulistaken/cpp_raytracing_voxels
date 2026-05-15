@@ -25,16 +25,16 @@ typedef struct{
     f32 b;
     f32 dip;
 } LightData;
-
+const u32 RANDSZ = 10000;
 typedef struct{
-    float data_x[2048];
-    float data_y[2048];
+    float data_x[RANDSZ];
+    float data_y[RANDSZ];
 } RandData;
 RandData get_randdata(){
     RandData rdata;
-    for(int i = 0; i < 2048; i ++){
-        rdata.data_x[i]=((float)GetRandomValue(-10000, 10000)) / 10000.0;
-        rdata.data_y[i]=((float)GetRandomValue(-10000, 10000)) / 10000.0;
+    for(int i = 0; i < RANDSZ; i ++){
+        rdata.data_x[i]=((float)GetRandomValue(-100000, 100000)) / 100000.0;
+        rdata.data_y[i]=((float)GetRandomValue(-100000, 100000)) / 100000.0;
     }
     return rdata;
 }

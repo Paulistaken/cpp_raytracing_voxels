@@ -99,7 +99,6 @@ int main(){
 
     rnd.load_screen_data(screen);
 
-    // LightSource light_flash = LightSource{Vec3(),Vec3(),Vec3(1,0.9,0.1),25,1,100};
     LightSource light_flash = LightSource{Vec3(),Vec3(),Vec3(1,1,1),25,1,100};
     LightSource light_sun = LightSource{Vec3(),Vec3(),Vec3(1,1,1),100,1,500};
 
@@ -315,7 +314,7 @@ void insert_blocks(
 
 void create_otree(OctTree& otree){
     Color clrs[11] = {RED,GREEN,BLUE,PINK,YELLOW,PURPLE,WHITE, DARKBLUE, DARKGREEN, DARKPURPLE, BROWN};
-    int stepsz = -4;
+    int stepsz = -3;
     f64 step = std::pow(2.0,stepsz);
     for(f64 ix = 18; ix <= 32; ix+=step){
     for(f64 iy = 18; iy <= 32; iy+=step){
@@ -328,6 +327,9 @@ void create_otree(OctTree& otree){
     }
     }
     }
+    otree.optimize();
+    stepsz = -4;
+    step = std::pow(2.0,stepsz);
     for(f64 ix = 18; ix <= 25; ix+=step){
     for(f64 iy = 18; iy <= 32; iy+=step){
     for(f64 iz = 18; iz <= 32; iz+=step){

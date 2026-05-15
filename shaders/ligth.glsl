@@ -1,4 +1,4 @@
-#version 430
+#version 460
 
 layout (local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 
@@ -30,7 +30,7 @@ struct LightData{
     float b;
     float disp;
 };
-const uint RANDSZ=2048;
+const uint RANDSZ=10000;
 struct RandData{
     float data_x[RANDSZ];
     float data_y[RANDSZ];
@@ -216,8 +216,8 @@ void do_ray_tracing(vec3 pos, vec3 dir, float maxdist){
 const float PI = 3.14159265359;
 
 void main(){
-    uint id1 = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 13 + gl_GlobalInvocationID.x % 7) % RANDSZ;
-    uint id2 = (gl_GlobalInvocationID.x + gl_GlobalInvocationID.x % 7) % RANDSZ;
+    uint id1 = (gl_GlobalInvocationID.x + gl_LocalInvocationID.x % 1247 + gl_GlobalInvocationID.x % 13) % RANDSZ;
+    uint id2 = (gl_GlobalInvocationID.x + gl_LocalInvocationID.x % 1033 + gl_GlobalInvocationID.x % 7) % RANDSZ;
     float rnumbx = rdata.data_x[id1] + rdata.data_x[id2];
     float rnumby = rdata.data_y[id2] + rdata.data_y[id1];
     float angv = rnumbx * 2 * PI;
